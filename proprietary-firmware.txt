@@ -1,0 +1,15 @@
+# Firmware from Redmi Pad 2 (taiko) BP2A.250605.031.A3 / OS3.0.304.0.WOVMIXM
+# Non-super, non-boot partitions - flashed as-is via update_engine (A/B).
+countrycode.img;AB
+dpm.img;AB
+gz.img;AB
+lk.img;AB
+logo.bin:logo.img;AB
+mcupm.img;AB
+md1img.img;AB
+pi_img.img;AB
+preloader_taiko.bin:preloader_raw.img;AB
+scp.img;AB
+spmfw.img;AB
+sspm.img;AB
+tee.img;AB

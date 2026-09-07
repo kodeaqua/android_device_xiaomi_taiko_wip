@@ -1,0 +1,201 @@
+import /vendor/etc/init/hw/init.mtkgki.rc
+
+# MTK project .rc configure
+
+on init
+    mkdir /mnt/media_rw/usbotg 0700 media_rw media_rw
+    mkdir /storage/usbotg 0700 root root
+
+on post-fs-data
+
+#Camera
+    chmod 0660 /dev/MAINAF
+    chown system camera /dev/MAINAF
+
+    chmod 0660 /dev/MAINAF2
+    chown system camera /dev/MAINAF2
+
+    chmod 0660 /dev/SUBAF
+    chown system camera /dev/SUBAF
+
+    chmod 0660 /dev/GAF001AF
+    chown system camera /dev/GAF001AF
+
+    chmod 0660 /dev/DW9714AF
+    chown system camera /dev/DW9714AF
+
+    chmod 0660 /dev/LC898212AF
+    chown system camera /dev/LC898212AF
+
+    chmod 0660 /dev/BU64745GWZAF
+    chown system camera /dev/BU64745GWZAF
+
+# MIUI ADD: Performance_BoostFramework
+    chown system system /sys/module/perf_helper/mimd/mimdtrigger
+# END Performance_BoostFramework
+
+#SMB
+    chown system system /proc/smb/ScreenComm
+    chmod 0660 /proc/smb/ScreenComm
+
+    chmod 0660 /dev/spm
+    chown system system /dev/spm
+
+# O84 code modify chenliwei at 20250624 start
+mkdir /data/vendor/camera/ 0777 system camera
+mkdir /data/vendor/camera/mfnr 0777 system camera
+# O84 code modify chenliwei at 20250624 end
+
+#iorap2
+    chown system system /dev/iorap_dev
+
+on init
+    # Refer to http://source.android.com/devices/tech/storage/index.html
+    # It said, "Starting in Android 4.4, multiple external storage devices are surfaced to developers through
+    #           Context.getExternalFilesDirs(), Context.getExternalCacheDirs(), and Context.getObbDirs().
+    #           External storage devices surfaced through these APIs must be a semi-permanent part of the device (such as an SD card slot in a battery compartment).
+    #           Developers expect data stored in these locations to be available over long periods of time."
+    # Therefore, if the target doesn't support sd hot-plugging (Ex: the SD card slot in a battery compartment), we need to export SECONDARY_STORAGE in 'boot' section
+    #
+    # export SECONDARY_STORAGE /storage/sdcard1
+
+# start mmstat
+on property:sys.boot_completed=1
+    mkdir /sys/kernel/tracing/instances/mmstat 711
+    write /sys/kernel/tracing/instances/mmstat/tracing_on 0
+    write /sys/kernel/tracing/instances/mmstat/buffer_size_kb 16
+    write /sys/kernel/tracing/instances/mmstat/events/mmstat/enable 1
+    write /sys/kernel/tracing/instances/mmstat/tracing_on 1
+
+    write /proc/sys/vm/watermark_scale_factor 50
+
+# O84&O84X code for HQFEAT-119309 by p-wangyongjian6 at 2025.6.23 start
+on property:vendor.sysctl.tx=1
+    exec /vendor/bin/iwpriv wlan0 driver "SET_PWR_CTRL MySar 1"
+on property:vendor.sysctl.tx=2
+    exec /vendor/bin/iwpriv wlan0 driver "SET_PWR_CTRL MySar 2"
+on property:vendor.sysctl.tx=3
+    exec /vendor/bin/iwpriv wlan0 driver "SET_PWR_CTRL MySar 3"
+on property:vendor.sysctl.tx=4
+    exec /vendor/bin/iwpriv wlan0 driver "SET_PWR_CTRL MySar 4"
+
+# N6 BUGO84XUPW-653 p-wangyongjian6 2025/10/10 start
+service sarcalibration /vendor/bin/sns_sensors_test_and_cal -c 57,3,50000000,0
+    class main
+    user root
+    disabled
+    oneshot
+    group root system
+    seclabel u:r:sardiag:s0
+# N6 BUGO84XUPW-653 p-wangyongjian6 2025/10/10 end
+# O84&O84X code for HQFEAT-119309 by p-wangyongjian6 at 2025.6.23 end
+
+
+on post-fs-data
+# metis
+    chmod 0666 /dev/metis
+    restorecon /dev/metis
+    chown 0666 /sys/module/metis/parameters
+    chmod 0664 /sys/module/metis/parameters/add_rebind_task_lit
+    chmod 0664 /sys/module/metis/parameters/add_rebind_task_mid
+    chmod 0664 /sys/module/metis/parameters/add_rebind_task_big
+    chmod 0664 /sys/module/metis/parameters/del_rebind_task_lit
+    chmod 0664 /sys/module/metis/parameters/del_rebind_task_mid
+    chmod 0664 /sys/module/metis/parameters/del_rebind_task_big
+    chmod 0664 /sys/module/metis/parameters/add_lclus_affinity_uidlist
+    chmod 0664 /sys/module/metis/parameters/del_lclus_affinity_uidlist
+    chmod 0664 /sys/module/metis/parameters/add_mclus_affinity_uidlist
+    chmod 0664 /sys/module/metis/parameters/del_mclus_affinity_uidlist
+    chmod 0664 /sys/module/metis/parameters/add_bclus_affinity_uidlist
+    chmod 0664 /sys/module/metis/parameters/del_bclus_affinity_uidlist
+    chmod 0664 /sys/module/metis/parameters/reset_clus_affinity_uidlist
+    chown root system /sys/module/metis/parameters
+    chown root system /sys/module/metis/parameters/add_rebind_task_lit
+    chown root system /sys/module/metis/parameters/add_rebind_task_mid
+    chown root system /sys/module/metis/parameters/add_rebind_task_big
+    chown root system /sys/module/metis/parameters/del_rebind_task_lit
+    chown root system /sys/module/metis/parameters/del_rebind_task_mid
+    chown root system /sys/module/metis/parameters/del_rebind_task_big
+    chown root system /sys/module/metis/parameters/add_lclus_affinity_uidlist
+    chown root system /sys/module/metis/parameters/del_lclus_affinity_uidlist
+    chown root system /sys/module/metis/parameters/add_mclus_affinity_uidlist
+    chown root system /sys/module/metis/parameters/del_mclus_affinity_uidlist
+    chown root system /sys/module/metis/parameters/add_bclus_affinity_uidlist
+    chown root system /sys/module/metis/parameters/del_bclus_affinity_uidlist
+    chown root system /sys/module/metis/parameters/reset_clus_affinity_uidlist
+    chmod 0666 /dev/metis
+    restorecon /dev/metis
+    chmod 0666 /sys/module/metis/parameters/mi_viptask
+    restorecon /sys/module/metis/parameters/mi_viptask
+    chmod 0666 /sys/module/metis/parameters/mi_viptask_balance
+    restorecon /sys/module/metis/parameters/mi_viptask_balance
+    chmod 0666 /sys/module/metis/parameters/mi_boost_duration
+    restorecon /sys/module/metis/parameters/mi_boost_duration
+    chmod 0666 /sys/class/thermal/thermal_message/boost
+    restorecon /sys/class/thermal/thermal_message/boost
+    chmod 0666 /sys/module/metis/parameters/vip_link_enable
+    restorecon /sys/module/metis/parameters/vip_link_enable
+    chmod 0666 /sys/module/metis/parameters/vip_link_async_binder
+    restorecon /sys/module/metis/parameters/vip_link_async_binder
+    chmod 0666 /sys/module/metis/parameters/mi_fboost_enable
+    restorecon /sys/module/metis/parameters/mi_fboost_enable
+    chmod 0666 /sys/module/metis/parameters/add_mi_viptask_enqueue_boost
+    restorecon /sys/module/metis/parameters/add_mi_viptask_enqueue_boost
+    chmod 0666 /sys/module/metis/parameters/del_mi_viptask_enqueue_boost
+    restorecon /sys/module/metis/parameters/del_mi_viptask_enqueue_boost
+    chmod 0666 /sys/module/metis/parameters/add_mi_viptask_sched_priority
+    restorecon /sys/module/metis/parameters/add_mi_viptask_sched_priority
+    chmod 0666 /sys/module/metis/parameters/del_mi_viptask_sched_priority
+    restorecon /sys/module/metis/parameters/del_mi_viptask_sched_priority
+    chmod 0666 /sys/module/metis/parameters/add_mi_viptask_sched_lit_core
+    restorecon /sys/module/metis/parameters/add_mi_viptask_sched_lit_core
+    chmod 0666 /sys/module/metis/parameters/del_mi_viptask_sched_lit_core
+    restorecon /sys/module/metis/parameters/del_mi_viptask_sched_lit_core
+    chmod 0666 /sys/module/metis/parameters/is_break_enable
+    restorecon /sys/module/metis/parameters/is_break_enable
+    chmod 0777 /sys/module/metis/parameters/minor_window_app
+    restorecon /sys/module/metis/parameters/minor_window_app
+    chmod 0666 /sys/module/metis/parameters/trace_motion_event
+    restorecon /sys/module/metis/parameters/trace_motion_event
+    chown root system /sys/module/metis/parameters/trace_motion_event
+    chmod 0666 /sys/module/metis/parameters/cold_start_app_tgid
+    restorecon /sys/module/metis/parameters/cold_start_app_tgid
+    chmod 0666 /sys/module/metis/parameters/metis_wakeup_enable
+    restorecon /sys/module/metis/parameters/metis_wakeup_enable
+    chmod 0666 /sys/module/metis/parameters/metis_wakeup_task
+    restorecon /sys/module/metis/parameters/metis_wakeup_task
+    chmod 0666 /sys/module/metis/parameters/protect_cs
+    restorecon /sys/module/metis/parameters/protect_cs
+    chmod 0666 /sys/module/metis/parameters/metis_schlat_enable
+    restorecon /sys/module/metis/parameters/metis_schlat_enable
+    chmod 0666 /dev/metis_link
+    restorecon /dev/metis_link
+    chmod 0666 /sys/module/metis/parameters/mi_lock_blocked_pid
+    restorecon /sys/module/metis/parameters/mi_lock_blocked_pid
+
+    chmod 0666 /sys/module/metis/parameters/stask_prefer_cluster
+    restorecon /sys/module/metis/parameters/stask_prefer_cluster
+    chmod 0666 /sys/module/metis/parameters/render_prefer_cluster
+    restorecon /sys/module/metis/parameters/render_prefer_cluster
+    chmod 0666 /sys/module/metis/parameters/vip_prefer_cluster
+    restorecon /sys/module/metis/parameters/vip_prefer_cluster
+    chmod 0666 /sys/module/metis/parameters/ip_prefer_cluster
+    restorecon /sys/module/metis/parameters/ip_prefer_cluster
+    chmod 0666 /sys/module/metis/parameters/force_forbidden_walt_lb
+    restorecon /sys/module/metis/parameters/force_forbidden_walt_lb
+    chmod 0666 /sys/module/metis/parameters/force_viptask_select_rq
+    restorecon /sys/module/metis/parameters/force_viptask_select_rq
+    chmod 0666 /sys/module/metis/parameters/force_cluster_sched_enable
+    restorecon /sys/module/metis/parameters/force_cluster_sched_enable
+    chmod 0666 /sys/module/metis/parameters/speed_touch_enable
+    restorecon /sys/module/metis/parameters/speed_touch_enable
+    chown root system /sys/module/metis/parameters/speed_touch_enable
+
+on init
+    insmod /vendor/lib/modules/millet_core.ko
+    insmod /vendor/lib/modules/binder_gki.ko
+    insmod /vendor/lib/modules/millet_binder.ko
+    insmod /vendor/lib/modules/millet_hs.ko
+    insmod /vendor/lib/modules/millet_pkg.ko
+    insmod /vendor/lib/modules/millet_sig.ko
+    insmod /vendor/lib/modules/millet_oem_cgroup.ko
