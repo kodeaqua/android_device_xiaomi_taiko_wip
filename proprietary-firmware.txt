@@ -1,5 +1,12 @@
 # Firmware from Redmi Pad 2 (taiko) BP2A.250605.031.A3 / OS3.0.304.0.WOVMIXM
 # Non-super, non-boot partitions - flashed as-is via update_engine (A/B).
+#
+# Verified against the OTA payload partition list (dump-ota/all_files.txt) and
+# MT6789_Android_scatter.txt: this set (+ boot/vendor_boot/dtbo via
+# BOARD_PREBUILT_*, + build-generated vbmeta*) is the complete flashable set.
+# Deliberately omitted: hunantv.img (Mango-TV preinstall partition, present in
+# the stock payload - bloatware, not wanted), efuse/rescue (OTP / not
+# OTA-flashed), super/userdata (built / formatted).
 countrycode.img;AB
 dpm.img;AB
 gz.img;AB
