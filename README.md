@@ -105,6 +105,37 @@ mka bacon
 `NEEDED` libs are missing — add targeted fixups to the `blob_fixups` map and
 re-run.
 
+## AOSP-core audit (source.android.com/docs/core)
+
+Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
+dynamic-partitions, loadable-kernel-modules, vndk build-system.
+
+Fixed:
+- `BOARD_INCLUDE_RECOVERY_RAMDISK_IN_VENDOR_BOOT := true` added — required
+  (with header v4 + `BOARD_MOVE_RECOVERY_RESOURCES_TO_VENDOR_BOOT`) to emit the
+  standalone `recovery` fragment (ramdisk_type RECOVERY) that stock has.
+- `TARGET_COPY_OUT_ODM := vendor/odm` — taiko has no `odm` partition (only
+  `odm_dlkm`); 19 blobs + `odm.prop` target `odm/` and would otherwise try to
+  build a non-existent `odm.img`.
+- Dropped `BOARD_AVB_RECOVERY_*` (no recovery partition) and
+  `BOARD_KERNEL_SEPARATED_DTBO` (build-from-source-only flag; we ship a prebuilt
+  dtbo).
+- `BOARD_SUPER_PARTITION_METADATA_DEVICE := super` made explicit.
+
+Verified OK:
+- boot.img kernel-only + no init_boot + `BOARD_USES_GENERIC_KERNEL_IMAGE` ⇒ the
+  generic ramdisk is concatenated into vendor_boot by the build (AOSP behaviour),
+  so `TARGET_NO_KERNEL` + `BOARD_PREBUILT_BOOTIMAGE` is sufficient.
+- Virtual A/B (not legacy A/B): super holds ONE copy of the logical set, so
+  `BOARD_<group>_SIZE ≈ BOARD_SUPER_PARTITION_SIZE` is correct (not `/2`).
+- fstab logical partitions == dynamic-partition list (7/7).
+- `BOARD_AVB_VBMETA_SYSTEM` / `_VENDOR` groups match every `avb=` tag in fstab.
+- No VNDK (`BOARD_VNDK_VERSION`) — correct, VNDK is deprecated on Android 16.
+- `system_dlkm` modules are the stock GKI set (KMI-locked to `6.12.30-android16-5`).
+
+Still open: see TODO. Also `tablet-10in-xhdpi-2048-dalvik-heap.mk` is a modest
+heap for a 6/8 GB tablet — tune once booting.
+
 ## TODO before a flashable build
 
 - [ ] `BOARD_SUPER_PARTITION_SIZE` / group size — confirm from a real

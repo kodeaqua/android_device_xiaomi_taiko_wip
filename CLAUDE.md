@@ -34,11 +34,27 @@ seeded from is `lineage-23.0` — see "LineageOS 23.2 deltas" below.
 
 ## Boot / kernel model (do not "fix" this into a normal kernel build)
 
-- `boot.img`: stock GKI, **kernel-only**, consumed via `TARGET_NO_KERNEL := true` + `BOARD_PREBUILT_BOOTIMAGE`. Build only rewrites its AVB footer.
-- No `init_boot` partition — do **not** add `BOARD_PREBUILT_INIT_BOOT_IMAGE`.
-- `vendor_boot.img`: **rebuilt** from `prebuilt/dtb/` + `prebuilt/modules/` + Lineage recovery. Header v4, `BOARD_MOVE_RECOVERY_RESOURCES_TO_VENDOR_BOOT := true`. The "2 ramdisks" people mention = PLATFORM + RECOVERY fragments, nothing else.
-- `dtbo.img`: stock, `BOARD_PREBUILT_DTBOIMAGE` (no source to regenerate overlays).
-- All `.ko` are prebuilt and KMI-locked to stock GKI `6.12.30-android16-5`. If you swap the kernel/GKI build, re-extract every module set.
+- `boot.img`: stock GKI, **kernel-only** (`ramdisk_size = 0`), consumed via
+  `TARGET_NO_KERNEL := true` + `BOARD_PREBUILT_BOOTIMAGE`. Build only rewrites
+  its AVB footer.
+- No `init_boot` partition — do **not** add `BOARD_PREBUILT_INIT_BOOT_IMAGE` /
+  `BOARD_INIT_BOOT_IMAGE_PARTITION_SIZE`. With `BOARD_USES_GENERIC_KERNEL_IMAGE`
+  the build concatenates the generic ramdisk into **vendor_boot** — that is the
+  documented AOSP path, no extra flag needed.
+- `vendor_boot.img`: **rebuilt** from `prebuilt/dtb/` + `prebuilt/modules/` +
+  generic ramdisk + Lineage recovery. Header v4. Recovery is a **separate**
+  fragment (`ramdisk_type` RECOVERY, name `recovery`) — needs BOTH
+  `BOARD_MOVE_RECOVERY_RESOURCES_TO_VENDOR_BOOT := true` **and**
+  `BOARD_INCLUDE_RECOVERY_RAMDISK_IN_VENDOR_BOOT := true`. The "2 ramdisks" =
+  PLATFORM + RECOVERY, nothing else (no "dlkm" fragment).
+- `dtbo.img`: stock, `BOARD_PREBUILT_DTBOIMAGE`. `BOARD_KERNEL_SEPARATED_DTBO`
+  is deliberately unset (build-from-source flag only).
+- `odm` is folded into `/vendor/odm` (`TARGET_COPY_OUT_ODM := vendor/odm`) — no
+  `odm` partition. `odm_dlkm` IS its own logical partition.
+- Virtual A/B (not legacy): super carries ONE copy of the logical set →
+  `BOARD_<group>_SIZE ≈ BOARD_SUPER_PARTITION_SIZE`, never `/2`.
+- All `.ko` are prebuilt and KMI-locked to stock GKI `6.12.30-android16-5`. If
+  you swap the kernel/GKI build, re-extract every module set.
 
 ## Kernel module wiring
 

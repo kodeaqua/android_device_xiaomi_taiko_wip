@@ -80,21 +80,28 @@ TARGET_BOARD_PLATFORM_GPU := mali-g57
 BOARD_BOOT_HEADER_VERSION := 4
 BOARD_USES_GENERIC_KERNEL_IMAGE := true
 BOARD_RAMDISK_USE_LZ4 := true
-BOARD_KERNEL_SEPARATED_DTBO := true
 BOARD_KERNEL_PAGESIZE := 4096
 
 TARGET_NO_KERNEL := true
 BOARD_PREBUILT_BOOTIMAGE := $(PREBUILT_PATH)/boot.img
 
+# dtbo is its own physical partition, supplied as a stock prebuilt (no source
+# to regenerate the overlays). BOARD_KERNEL_SEPARATED_DTBO is intentionally NOT
+# set - that flag is for the build-dtbo-from-source path.
+
 # -----------------------------------------------------------------------------
 # vendor_boot.img - REBUILT from parts so LineageOS recovery + our fstab land
 # in it. Stock vendor_boot is header v4 with two ramdisk fragments:
-#   [0] PLATFORM (default) -> vendor ramdisk + first-stage kernel modules
+#   [0] PLATFORM (default) -> generic + vendor ramdisk + first-stage modules
 #   [1] RECOVERY ("recovery") -> recovery resources
-# i.e. a plain BOARD_MOVE_RECOVERY_RESOURCES_TO_VENDOR_BOOT layout.
+# With BOARD_USES_GENERIC_KERNEL_IMAGE the generic ramdisk is concatenated into
+# vendor_boot (boot.img stays kernel-only), and
+# BOARD_INCLUDE_RECOVERY_RAMDISK_IN_VENDOR_BOOT emits the separate "recovery"
+# fragment (ramdisk_type = RECOVERY) - matching the stock table exactly.
 # -----------------------------------------------------------------------------
 BOARD_VENDOR_BOOT_HEADER_VERSION := 4
 BOARD_INCLUDE_DTB_IN_BOOTIMG :=
+BOARD_INCLUDE_RECOVERY_RAMDISK_IN_VENDOR_BOOT := true
 
 BOARD_KERNEL_CMDLINE := bootopt=64S3,32N2,64N2
 
@@ -169,6 +176,13 @@ BOARD_MTK_DYNAMIC_PARTITIONS_PARTITION_LIST := \
 BOARD_MTK_DYNAMIC_PARTITIONS_SIZE := 9122611200
 
 BOARD_USES_METADATA_PARTITION := true
+BOARD_SUPER_PARTITION_METADATA_DEVICE := super
+
+# odm is NOT a separate partition on taiko - stock folds it into /vendor/odm
+# (the dump has vendor/odm/{bin,etc}; the payload has odm_dlkm.img but no
+# odm.img). 19 blobs and odm.prop target odm/ -> redirect the whole odm
+# install tree into vendor. odm_dlkm stays its own logical partition.
+TARGET_COPY_OUT_ODM := vendor/odm
 
 # Filesystem types.
 # A from-source LineageOS build is generated fresh, so these do not have to match
@@ -256,10 +270,8 @@ BOARD_AVB_VENDOR_BOOT_ALGORITHM := SHA256_RSA2048
 BOARD_AVB_VENDOR_BOOT_ROLLBACK_INDEX := $(PLATFORM_SECURITY_PATCH_TIMESTAMP)
 BOARD_AVB_VENDOR_BOOT_ROLLBACK_INDEX_LOCATION := 4
 
-BOARD_AVB_RECOVERY_KEY_PATH := external/avb/test/data/testkey_rsa2048.pem
-BOARD_AVB_RECOVERY_ALGORITHM := SHA256_RSA2048
-BOARD_AVB_RECOVERY_ROLLBACK_INDEX := $(PLATFORM_SECURITY_PATCH_TIMESTAMP)
-BOARD_AVB_RECOVERY_ROLLBACK_INDEX_LOCATION := 5
+# No BOARD_AVB_RECOVERY_* - there is no recovery partition (recovery is a
+# vendor_boot ramdisk fragment, covered by vendor_boot's AVB descriptor).
 
 # -----------------------------------------------------------------------------
 # Security patch level (vendor image) - from stock vendor/build.prop
