@@ -9,8 +9,11 @@
 # mtk base labels only ...keymint@3.0-service.mitee ; the taiko blob is @4.0.
 /(vendor|system/vendor)/bin/hw/android\.hardware\.security\.keymint@4\.0-service\.mitee    u:object_r:hal_keymint_default_exec:s0
 
-# --- lights: MediaTek AIDL (taiko blob is "lights-service.mediatek") ---------
-/(vendor|system/vendor)/bin/hw/android\.hardware\.lights-service\.mediatek                 u:object_r:hal_light_default_exec:s0
+# --- lights: MediaTek AIDL --------------------------------------------------
+# NOT labeled here: device/mediatek/sepolicy_vndr/base/vendor/file_contexts
+# already maps android.hardware.lights-service.mediatek -> mtk_hal_light_exec
+# (full mtk_hal_light domain in base/vendor/mtk_hal_light.te). Re-labeling it
+# hal_light_default_exec is a "Multiple different specifications" hard error.
 
 # --- dumpstate: Xiaomi -------------------------------------------------------
 /(vendor|system/vendor)/bin/hw/android\.hardware\.dumpstate-service\.xiaomi                u:object_r:hal_dumpstate_default_exec:s0

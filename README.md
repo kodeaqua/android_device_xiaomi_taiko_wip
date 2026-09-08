@@ -108,8 +108,8 @@ and lists blobs with missing `NEEDED` libs — add `blob_fixups` and re-extract.
 ## Status (2026-09-08)
 
 Pushed to `kodeaqua/android_device_xiaomi_taiko_wip` `lineage-23.2`. Passed
-soong bootstrap + kati (31 fix rounds, logged below); **compiling under ninja**
-(reached ~7%, `generated_kernel_includes`, before the Round 31 fix).
+soong bootstrap + kati (32 fix rounds, logged below); **compiling under ninja**
+(reached ~14%, `file_contexts.device`, before the Round 32 fix).
 Build runs on a separate machine — errors are pasted in and fixed here. Camera
 enabled; `configs/audio|media|wifi` = taiko's own; `BOARD_SUPER_PARTITION_SIZE`
 = 11 GiB from the scatter. See the workspace `../../../CLAUDE.md` "Build status"
@@ -120,6 +120,31 @@ for the fix-class cheat sheet.
 Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
+
+### Round 32 — device `file_contexts` re-labels an MTK-base path
+
+`//system/sepolicy:file_contexts.device.sorted.tmp`:
+`Multiple different specifications for
+/(vendor|system/vendor)/bin/hw/android\.hardware\.lights-service\.mediatek
+(u:object_r:hal_light_default_exec:s0 and u:object_r:mtk_hal_light_exec:s0)`.
+
+The `file_contexts.device.tmp` genrule concatenates every
+`BOARD_VENDOR_SEPOLICY_DIRS` + AOSP `file_contexts` and rejects two rows for the
+same path regex with different types (byte-identical is fine; different is a hard
+error, and `checkpolicy`/`sefcontext_compile` aborts on the first one).
+
+`device/mediatek/sepolicy_vndr/base/vendor/file_contexts:871` already labels
+`android.hardware.lights-service.mediatek` -> `mtk_hal_light_exec` (a full domain
+- `base/vendor/mtk_hal_light.te`: `hal_server_domain(mtk_hal_light, hal_light)`
++ `init_daemon_domain`). The Round-2 device `file_contexts` re-declared the same
+binary as the generic `hal_light_default_exec`. Dropped the device line (comment
+kept as a do-not-re-add marker).
+
+Re-checked the other Round-2 device `file_contexts` additions vs the MTK base:
+`keymint@4.0-service.mitee` (base only has `@3.0`/`@1.0`, and to the same
+`hal_keymint_default_exec` type anyway - no clash), `dumpstate-service.xiaomi`,
+`mi_thermald`, the `mi_display` + touch-gesture sysfs nodes - none are in the
+base, no conflict.
 
 ### Round 31 — `generated_kernel_includes` vs no kernel source
 
