@@ -38,7 +38,6 @@ vendor/lib/hw/audio.r_submix.mt6789.so
 vendor/lib/hw/audio.usb.default.so
 vendor/lib/hw/vendor.mediatek.hardware.audio-impl.so
 vendor/lib/libaconfig_storage_read_api_cc.so
-vendor/lib/libalsautilsv2.so
 vendor/lib/libaudio_aidl_conversion_common_ndk.so
 vendor/lib/libaudioaidlcommon.so
 vendor/lib/libaudiotoolkit_vendor.so
@@ -57,7 +56,6 @@ vendor/lib64/hw/audio.r_submix.mt6789.so
 vendor/lib64/hw/audio.usb.default.so
 vendor/lib64/hw/vendor.mediatek.hardware.audio-impl.so
 vendor/lib64/libaconfig_storage_read_api_cc.so
-vendor/lib64/libalsautilsv2.so
 vendor/lib64/libaudio_aidl_conversion_common_ndk.so
 vendor/lib64/libaudioaidlcommon.so
 vendor/lib64/libaudiotoolkit_vendor.so

@@ -132,7 +132,7 @@ Removed the AOSP `vendor_available` tools/lib aospdtgen had grabbed as blobs:
 
 `module "libalsautils" ... partition is different: system(libalsautils) !=
 vendor(prebuilt_libalsautils)`. AOSP `system/media/alsa_utils`. Removed
-`vendor/lib{,64}/libalsautils.so`. `libalsautilsv2.so` (MediaTek's own) kept.
+`vendor/lib{,64}/libalsautils.so`. `libalsautilsv2.so` also AOSP (`system/media/alsa_utils` builds v1 + v2) - removed too.
 A scan of the blob list against ~90 common AOSP `vendor_available` lib names
 found only this one still wrong.
 
