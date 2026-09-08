@@ -111,6 +111,13 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 11 — dmabuf_dump + AOSP tool bins
+
+`module "dmabuf_dump" ... partition is different`. AOSP `system/memory/libmeminfo`.
+Removed the AOSP `vendor_available` tools/lib aospdtgen had grabbed as blobs:
+`dmabuf_dump`, `dumpsys`, `boringssl_self_test32/64`, `getfattr`, `setfattr`,
+`getopt`, `blkdiscard` (vendor/bin) and `libmeminfo.so`.
+
 ### Round 10 — libalsautils
 
 `module "libalsautils" ... partition is different: system(libalsautils) !=

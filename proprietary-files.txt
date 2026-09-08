@@ -1511,10 +1511,7 @@ vendor/bin/audiocmdservice_atci
 vendor/bin/autobt
 vendor/bin/backlight_bin
 vendor/bin/bip_ap
-vendor/bin/blkdiscard
 vendor/bin/boardid_bin
-vendor/bin/boringssl_self_test32
-vendor/bin/boringssl_self_test64
 vendor/bin/bt_dump
 vendor/bin/charge_logger
 vendor/bin/color
@@ -1524,13 +1521,11 @@ vendor/bin/dconfig
 vendor/bin/dcxosetcap
 vendor/bin/dexecutor
 vendor/bin/displayfeature
-vendor/bin/dmabuf_dump
 vendor/bin/dmc_core
 vendor/bin/doeapp-memtester
 vendor/bin/doeapp-sat
 vendor/bin/dreport
 vendor/bin/dtc_vendor
-vendor/bin/dumpsys
 vendor/bin/eara_io_service
 vendor/bin/factory
 vendor/bin/ffu
@@ -1538,8 +1533,6 @@ vendor/bin/fidoca_mitee
 vendor/bin/fpsgo
 vendor/bin/frs
 vendor/bin/frs_intf
-vendor/bin/getfattr
-vendor/bin/getopt
 vendor/bin/hs20-osu-client
 vendor/bin/hypsys_vendor
 vendor/bin/initprop_bin
@@ -1565,7 +1558,6 @@ vendor/bin/netdc
 vendor/bin/panelcolor_bin
 vendor/bin/rt5512_calibration
 vendor/bin/rttv_v2
-vendor/bin/setfattr
 vendor/bin/smartpa_nvtest
 vendor/bin/sns_sensors_test_and_cal
 vendor/bin/soterd
@@ -2253,7 +2245,6 @@ vendor/lib64/libkeymint_support.so
 vendor/lib64/libkeystore-wifi-hidl.so
 vendor/lib64/libmbrainSDKv.so
 vendor/lib64/libmcve.so
-vendor/lib64/libmeminfo.so
 vendor/lib64/libmfido_mitee.so
 vendor/lib64/libmialgo_ai_vision.so
 vendor/lib64/libmialgo_utils.so
