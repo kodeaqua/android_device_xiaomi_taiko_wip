@@ -120,6 +120,28 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 29 — legacy `PRODUCT_BUILD_PROP_OVERRIDES` keys
+
+`//build/soong:ramdisk-build.prop ... Key "PRODUCT_NAME" isn't a valid prop
+override` from `gen_build_prop`.
+
+Android 16 generates `build.prop` in Soong. `build/soong/scripts/gen_build_prop.py`
+`override_config()` iterates `PRODUCT_BUILD_PROP_OVERRIDES` and **hard-exits** if
+a key is not already a field in the product-config dict — the legacy make-var
+names (`PRODUCT_NAME`, `TARGET_DEVICE`, `PRIVATE_BUILD_DESC`) are not. The seed
+`lineage_taiko.mk` carried the pre-A15 idiom. Mapped to the current field names
+(cf. `device/google_car/tangorpro_car`):
+
+| old | new | prop |
+|---|---|---|
+| `PRODUCT_NAME=taiko` | `DeviceProduct=taiko` | `ro.product.<part>.name` |
+| `TARGET_DEVICE=taiko` | *(dropped)* | `DeviceName` is already `taiko` |
+| `PRIVATE_BUILD_DESC=…` | `BuildDesc=…` | `ro.build.description` |
+
+`BUILD_FINGERPRINT :=` is untouched — still honored (`build/make/core/config.mk`
+writes it to `build_fingerprint-$(TARGET_PRODUCT).txt`, which `gen_build_prop`
+reads via `--build-fingerprint-file`).
+
 ### Round 28 — `prefer: true` blob shadowing the source `libwifi-hal`
 
 `hardware/interfaces/wifi/aidl/default/wifi_legacy_hal.h:20:10: fatal error:
