@@ -2211,7 +2211,6 @@ vendor/lib64/libhevce_sb.ca7.android.so
 vendor/lib64/libhfmanagerwrapper.so
 vendor/lib64/libicd_decoder.so
 vendor/lib64/libifcutils_mtk.so
-vendor/lib64/libimage_io.so
 vendor/lib64/libimgsensorca.so
 vendor/lib64/libimgstream_sync.so
 vendor/lib64/libimgsys_osal.so
