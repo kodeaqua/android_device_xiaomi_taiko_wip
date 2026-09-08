@@ -1083,7 +1083,6 @@ vendor/lib64/libgpu_aux.so
 vendor/lib64/libgpud.so
 vendor/lib64/libgralloc_metadata.so
 vendor/lib64/libgralloctypes_mtk.so
-vendor/lib64/libgrallocusage.so
 vendor/lib64/libhdrmode.so
 vendor/lib64/libhistprocess.so
 vendor/lib64/libmiBrightness.so
@@ -1174,14 +1173,10 @@ vendor/bin/hw/android.hardware.media.c2-mediatek
 vendor/bin/hw/android.hardware.media.c2-mediatek-64b
 vendor/etc/init/android.hardware.media.c2-mediatek-64b.rc
 vendor/etc/seccomp_policy/mediacodec.policy
-vendor/lib/libcodec2_aidl.so
 vendor/lib/libcodec2_fsr.so
-vendor/lib/libcodec2_hal_common.so
-vendor/lib/libcodec2_hidl_plugin.so
 vendor/lib/libcodec2_mtk_c2store.so
 vendor/lib/libcodec2_mtk_vdec.so
 vendor/lib/libcodec2_mtk_venc.so
-vendor/lib/libcodec2_soft_common.so
 vendor/lib/libcodec2_vpp_chdr_plugin.so
 vendor/lib/libcodec2_vpp_fa_plugin.so
 vendor/lib/libcodec2_vpp_ft_plugin.so
@@ -1190,17 +1185,10 @@ vendor/lib/libcodec2_vpp_qt_plugin.so
 vendor/lib/libcodec2_vpp_roi_plugin.so
 vendor/lib/libcodec2_vpp_rs_plugin.so
 vendor/lib/libformatter.so
-vendor/lib/libsfplugin_ccodec_utils.so
-vendor/lib/libstagefright_aidl_bufferpool2.so
-vendor/lib/libstagefright_bufferpool@2.0.1.so
-vendor/lib64/libcodec2_aidl.so
 vendor/lib64/libcodec2_fsr.so
-vendor/lib64/libcodec2_hal_common.so
-vendor/lib64/libcodec2_hidl_plugin.so
 vendor/lib64/libcodec2_mtk_c2store.so
 vendor/lib64/libcodec2_mtk_vdec.so
 vendor/lib64/libcodec2_mtk_venc.so
-vendor/lib64/libcodec2_soft_common.so
 vendor/lib64/libcodec2_vpp_chdr_plugin.so
 vendor/lib64/libcodec2_vpp_fa_plugin.so
 vendor/lib64/libcodec2_vpp_ft_plugin.so
@@ -1209,9 +1197,6 @@ vendor/lib64/libcodec2_vpp_qt_plugin.so
 vendor/lib64/libcodec2_vpp_roi_plugin.so
 vendor/lib64/libcodec2_vpp_rs_plugin.so
 vendor/lib64/libformatter.so
-vendor/lib64/libsfplugin_ccodec_utils.so
-vendor/lib64/libstagefright_aidl_bufferpool2.so
-vendor/lib64/libstagefright_bufferpool@2.0.1.so
 
 # Media (Dolby)
 vendor/bin/hw/vendor.dolby.dms.service
@@ -1223,8 +1208,6 @@ vendor/etc/vintf/manifest/vendor.dolby.media.c2-default-service-dax.xml
 vendor/lib/libdapparamstorage.so
 vendor/lib/vendor.dolby.dms-V1-ndk.so
 vendor/lib/vendor.dolby.hardware.dms@2.0.so
-vendor/lib64/libcodec2_hidl@1.1.so
-vendor/lib64/libcodec2_hidl@1.2.so
 vendor/lib64/libcodec2_store_dolby.so
 vendor/lib64/libdapparamstorage.so
 vendor/lib64/libdeccfg.so

@@ -111,6 +111,20 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 8 — "partition is different" (AOSP libs listed as vendor blobs)
+
+`module "libgrallocusage" ... partition is different: system(libgrallocusage) !=
+vendor(prebuilt_libgrallocusage)`. aospdtgen listed AOSP `frameworks/av` /
+`system/core` libs as vendor blobs; their `prebuilt_*` fights the source
+module's vendor variant. Removed 17: `libgrallocusage`, `libcodec2_aidl`,
+`libcodec2_hal_common`, `libcodec2_hidl_plugin`, `libcodec2_soft_common`,
+`libcodec2_hidl@1.1/1.2`, `libsfplugin_ccodec_utils`,
+`libstagefright_aidl_bufferpool2`, `libstagefright_bufferpool@2.0.1`
+(lib + lib64). MediaTek's own `libcodec2_mtk_*` / dolby / vpp / fsr blobs kept.
+
+Also: `rm -rf device/xiaomi/taiko-kernel/` on the build machine — a stale dir
+from an earlier attempt (soong "One culprit glob" warning).
+
 ### Round 7 — libwifi-hal-mediatek undefined
 
 `"libwifi_hal_vendor_impl_defaults" depends on undefined module "libwifi-hal-mediatek"`.
