@@ -1451,6 +1451,8 @@ vendor/lib/mt6789/libpqconfig.so
 vendor/lib/mt6789/libscltm.so
 vendor/lib/mt6789/libvcodec_utility_v3a.so
 vendor/lib/mt6789/libmtk_drvb.so
+vendor/lib/mt6789/libdpframework.so
+vendor/lib64/mt6789/libdpframework.so
 vendor/lib64/mt6789/libmtk_drvb.so
 vendor/lib/mt6789/libvcodecdrv_v3a.so
 vendor/lib/mt6789/libvpudv3a_vcodec.so

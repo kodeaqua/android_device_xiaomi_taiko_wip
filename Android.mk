@@ -33,6 +33,7 @@ MTK_SOC_SYMLINKS := \
     $(TARGET_OUT_VENDOR)/lib/libarm_egl_properties_sysprop.so \
     $(TARGET_OUT_VENDOR)/lib/libarm_gralloc_properties_sysprop.so \
     $(TARGET_OUT_VENDOR)/lib/libarm_mali_config_sysprops.so \
+    $(TARGET_OUT_VENDOR)/lib/libdpframework.so \
     $(TARGET_OUT_VENDOR)/lib/libgpudataproducer.so \
     $(TARGET_OUT_VENDOR)/lib/libhdrvideo.so \
     $(TARGET_OUT_VENDOR)/lib/libmmagent.so \
@@ -65,6 +66,7 @@ MTK_SOC_SYMLINKS := \
     $(TARGET_OUT_VENDOR)/lib64/libarm_egl_properties_sysprop.so \
     $(TARGET_OUT_VENDOR)/lib64/libarm_gralloc_properties_sysprop.so \
     $(TARGET_OUT_VENDOR)/lib64/libarm_mali_config_sysprops.so \
+    $(TARGET_OUT_VENDOR)/lib64/libdpframework.so \
     $(TARGET_OUT_VENDOR)/lib64/libgpudataproducer.so \
     $(TARGET_OUT_VENDOR)/lib64/libhdrvideo.so \
     $(TARGET_OUT_VENDOR)/lib64/libmmagent.so \
