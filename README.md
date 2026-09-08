@@ -108,8 +108,8 @@ and lists blobs with missing `NEEDED` libs — add `blob_fixups` and re-extract.
 ## Status (2026-09-08)
 
 Pushed to `kodeaqua/android_device_xiaomi_taiko_wip` `lineage-23.2`. Passed
-soong bootstrap + kati (33 fix rounds, logged below); **compiling under ninja**
-(reached ~2-14%, blob `.rc` `host_init_verifier`, before the Round 33 fix).
+soong bootstrap + kati (34 fix rounds, logged below); **compiling under ninja**
+(reached ~22%, blob `.rc` `host_init_verifier`, before the Round 34 fix).
 Build runs on a separate machine — errors are pasted in and fixed here. Camera
 enabled; `configs/audio|media|wifi` = taiko's own; `BOARD_SUPER_PARTITION_SIZE`
 = 11 GiB from the scatter. See the workspace `../../../CLAUDE.md` "Build status"
@@ -120,6 +120,36 @@ for the fix-class cheat sheet.
 Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
+
+### Round 34 — drop the legacy HIDL AEE service (kept the AIDL one)
+
+`host_init_verifier: vendor.mediatek.hardware.aee@1.1-service.rc: invalid
+interface in service 'aee.log-1-1': Interface is not in the known set of
+hidl_interfaces: 'vendor.mediatek.hardware.aee@1.0::IAee' / '@1.1::IAee'.`
+
+`host_init_verifier` validates every `interface <pkg>@<v>::<I>` line in an
+installed `.rc` against a `hidl_interface` module in the tree. On Android 16 MTK
+migrated AEE from HIDL to AIDL, and `hardware/mediatek` 23.2 ships no
+`vendor.mediatek.hardware.aee` HIDL. HyperOS still bundled **both** services:
+
+| kept (AIDL) | dropped (HIDL) |
+|---|---|
+| `vendor/bin/hw/vendor.mediatek.hardware.aee@V1-service` | `…aee@1.1-service` |
+| `…aee@V1-service.rc` (`interface aidl …aee.IAee/AEE`) | `…aee@1.1-service.rc` (`@1.0::IAee` / `@1.1::IAee`) |
+| `vendor/lib64/vendor.mediatek.hardware.aee-V1-ndk.so` | `…aee@1.0.so`, `…aee@1.1.so` |
+
+`configs/vintf/manifest.xml` already declares only the AIDL AEE
+(`format="aidl"`, `IAee/AEE`). ELF reverse-dep scan: the HIDL cluster
+(`aee@1.1-service` → `aee@1.0.so`/`aee@1.1.so`; `aee@1.0.so` → `aee@1.1.so`) is
+fully self-contained — nothing else in the blob set links it. The AIDL
+`@V1-service.rc` passes host_init_verifier (its `IAee` shows in the build's
+"Couldn't find AIDL metadata … expected for prebuilt interfaces" INFO list,
+which is non-fatal).
+
+Removed the 4 HIDL lines from `proprietary-files.txt`, ran `./setup-makefiles.py`,
+and deleted the orphaned files from the extracted tree. A full-tree scan of the
+blob `.rc` set for `interface <pkg>@<v>::` found `aee@1.1-service.rc` was the
+only one.
 
 ### Round 33 — `host_init_verifier`: blob service with no `user`
 

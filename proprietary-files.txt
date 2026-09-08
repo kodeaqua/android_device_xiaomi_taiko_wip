@@ -987,7 +987,6 @@ vendor/app/NetworkStackResOverlay/NetworkStackResOverlay.apk
 vendor/app/TetheringGoogleResOverlay/TetheringGoogleResOverlay.apk
 vendor/app/TetheringResOverlay/TetheringResOverlay.apk
 vendor/bin/hw/mifaced
-vendor/bin/hw/vendor.mediatek.hardware.aee@1.1-service
 vendor/bin/hw/vendor.mediatek.hardware.aee@V1-service
 vendor/bin/hw/vendor.mediatek.hardware.gpuserv-service
 vendor/bin/hw/vendor.mediatek.hardware.mbrain-service.mediatek
@@ -1133,7 +1132,6 @@ vendor/etc/init/panelcolor.rc
 vendor/etc/init/tee-supplicant.rc
 vendor/etc/init/touch_boost.rc
 vendor/etc/init/v3avpud-64b.rc
-vendor/etc/init/vendor.mediatek.hardware.aee@1.1-service.rc
 vendor/etc/init/vendor.mediatek.hardware.aee@V1-service.rc
 vendor/etc/init/vendor.xiaomi.hardware.aidl.mtdservice-miteeservice.rc
 vendor/etc/init/vendor.xiaomi.hardware.aidl.tidaservice-miteeservice.rc
@@ -1795,8 +1793,6 @@ vendor/lib64/s5k4h7_mipi_raw_IdxMgr.so
 vendor/lib64/vendor.mediatek.framework.mtksf_ext-V3-ndk.so
 vendor/lib64/vendor.mediatek.framework.mtksf_ext-V9-ndk.so
 vendor/lib64/vendor.mediatek.hardware.aee-V1-ndk.so
-vendor/lib64/vendor.mediatek.hardware.aee@1.0.so
-vendor/lib64/vendor.mediatek.hardware.aee@1.1.so
 vendor/lib64/vendor.mediatek.hardware.apmonitor-V1-ndk.so
 vendor/lib64/vendor.mediatek.hardware.apmonitor@2.0.so
 vendor/lib64/vendor.mediatek.hardware.apuware.apusys-V5-ndk.so
