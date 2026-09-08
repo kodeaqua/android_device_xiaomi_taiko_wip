@@ -111,6 +111,34 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 19 — more kati "already defined": AOSP test/passthrough/legacy blobs
+
+`hardware/libhardware/tests/nusensors: MODULE.TARGET.EXECUTABLES.test-nusensors
+already defined by vendor/xiaomi/taiko`. Same class as Round 18 - HyperOS left a
+pile of AOSP-built binaries/libs in `/vendor`. Dropped from
+`proprietary-files.txt` (soong builds each from source, or they are dead on
+Android 16):
+
+- `test-nusensor` / `test-nusensors` - `hardware/libhardware` test binaries.
+- Legacy HW-module passthrough libs (dead under full-AIDL A16, every name
+  collides with `hardware/libhardware`/`libhardware_legacy`): `gralloc.default`,
+  `power.default`, `vibrator.default`, `local_time.default`,
+  `sound_trigger.primary.default`, `audio_policy.stub`. Kept
+  `displayfeature.default` (Xiaomi's real HAL).
+- `libbluetooth_audio_session` / `libbluetooth_audio_session_aidl` - `vendor:
+  true` libs from `hardware/interfaces/bluetooth/audio/utils`, pulled into the
+  graph by the AIDL BT-audio HAL. MTK's impl links the `_mtk` / `_mediatek`
+  variants, which stay.
+- `android.hardware.bluetooth.audio@2.0-impl` / `@2.1-impl`,
+  `android.hardware.renderscript@1.0-impl`, `audio.bluetooth.default` - legacy
+  HIDL / RenderScript, unused on A16 (AIDL BT audio + no RS HAL).
+
+The bare SW audio-effect libs (`libbassboostsw`, `libequalizersw`, ...) also
+share names with `audio/aidl/default/*` but those are plain `cc_library_shared`
+with visibility limited to that package and only pulled by the AOSP `.example`
+effect service (which we don't run), so the MTK blobs stand - MTK's
+`audio_effects_config.xml` needs them.
+
 ### Round 18 — kati "MODULE ... already defined" (stock ships AOSP reference impls)
 
 Past soong bootstrap now; kati fails

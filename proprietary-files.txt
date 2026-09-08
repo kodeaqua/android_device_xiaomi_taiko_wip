@@ -282,24 +282,14 @@ vendor/lib64/libnvram.so
 vendor/lib64/libnvram_sec.so
 
 # Bluetooth (A2DP)
-vendor/lib/hw/android.hardware.bluetooth.audio@2.0-impl.so
-vendor/lib/hw/android.hardware.bluetooth.audio@2.1-impl.so
-vendor/lib/hw/audio.bluetooth.default.so
 vendor/lib/hw/vendor.mediatek.hardware.bluetooth.audio@2.1-impl.so
 vendor/lib/hw/vendor.mediatek.hardware.bluetooth.audio@2.2-impl.so
-vendor/lib/libbluetooth_audio_session.so
-vendor/lib/libbluetooth_audio_session_aidl.so
 vendor/lib/libbluetooth_audio_session_mediatek.so
 vendor/lib/vendor.mediatek.hardware.bluetooth.audio-V1-ndk.so
 vendor/lib/vendor.mediatek.hardware.bluetooth.audio@2.1.so
 vendor/lib/vendor.mediatek.hardware.bluetooth.audio@2.2.so
-vendor/lib64/hw/android.hardware.bluetooth.audio@2.0-impl.so
-vendor/lib64/hw/android.hardware.bluetooth.audio@2.1-impl.so
-vendor/lib64/hw/audio.bluetooth.default.so
 vendor/lib64/hw/vendor.mediatek.hardware.bluetooth.audio@2.1-impl.so
 vendor/lib64/hw/vendor.mediatek.hardware.bluetooth.audio@2.2-impl.so
-vendor/lib64/libbluetooth_audio_session.so
-vendor/lib64/libbluetooth_audio_session_aidl.so
 vendor/lib64/libbluetooth_audio_session_mediatek.so
 vendor/lib64/vendor.mediatek.hardware.bluetooth.audio-V1-ndk.so
 vendor/lib64/vendor.mediatek.hardware.bluetooth.audio@2.1.so
@@ -541,7 +531,6 @@ vendor/lib/hw/mt6789/android.hardware.graphics.allocator-V2-mediatek.so
 vendor/lib/hw/mt6789/vendor.mediatek.hardware.pq_aidl-impl.so
 vendor/lib/hw/mt6789/vulkan.mali.so
 vendor/lib/hw/displayfeature.default.so
-vendor/lib/hw/gralloc.default.so
 vendor/lib/mt6789/arm.graphics-V5-ndk.so
 vendor/lib/mt6789/libmtk_mali_user.so
 vendor/lib/mt6789/libpqparamparser.so
@@ -607,7 +596,6 @@ vendor/lib64/hw/mt6789/android.hardware.graphics.allocator-V2-mediatek.so
 vendor/lib64/hw/mt6789/vendor.mediatek.hardware.pq_aidl-impl.so
 vendor/lib64/hw/mt6789/vulkan.mali.so
 vendor/lib64/hw/displayfeature.default.so
-vendor/lib64/hw/gralloc.default.so
 vendor/lib64/hw/hwcomposer.mtk_common.so
 vendor/lib64/mt6789/arm.graphics-V5-ndk.so
 vendor/lib64/mt6789/libmtk_mali_user.so
@@ -704,8 +692,6 @@ vendor/bin/hw/android.hardware.lights-service.mediatek
 vendor/lib64/vendor.mediatek.hardware.mtklight-V1-ndk.so
 
 # Local time
-vendor/lib/hw/local_time.default.so
-vendor/lib64/hw/local_time.default.so
 
 # Media
 vendor/bin/hw/android.hardware.media.c2-mediatek
@@ -806,7 +792,6 @@ vendor/lib64/android.hardware.power-service-mediatek.so
 vendor/bin/hw/vendor.mediatek.hardware.mtkpower_applist-service.mediatek
 vendor/etc/init/vendor.mediatek.hardware.mtkpower@1.0-init.rc
 vendor/etc/init/vendor.mediatek.hardware.mtkpower@1.0-service.rc
-vendor/lib/hw/power.default.so
 vendor/lib/hw/vendor.mediatek.hardware.mtkpower-aidl-impl.so
 vendor/lib/libpower_timer.so
 vendor/lib/libpowerhal.so
@@ -816,7 +801,6 @@ vendor/lib/vendor.mediatek.hardware.mtkpower-V3-ndk.so
 vendor/lib/vendor.mediatek.hardware.mtkpower_applist-V3-ndk.so
 vendor/lib/vendor.mediatek.hardware.netdagent-V1-ndk.so
 vendor/lib/vendor.mediatek.hardware.netdagent@1.0.so
-vendor/lib64/hw/power.default.so
 vendor/lib64/hw/vendor.mediatek.hardware.mtkpower-aidl-impl.so
 vendor/lib64/libpower_timer.so
 vendor/lib64/libpowerhal.so
@@ -898,8 +882,6 @@ vendor/lib64/librcs_volte_core.so
 vendor/lib64/vendor.mediatek.hardware.clientapi-V1-ndk.so
 
 # RenderScript
-vendor/lib/hw/android.hardware.renderscript@1.0-impl.so
-vendor/lib64/hw/android.hardware.renderscript@1.0-impl.so
 
 # Security
 vendor/bin/hw/android.hardware.security.keymint@4.0-service.mitee
@@ -925,9 +907,7 @@ vendor/etc/sensors/hals.conf
 
 # Soundtrigger
 vendor/lib/hw/android.hardware.soundtrigger3-impl.so
-vendor/lib/hw/sound_trigger.primary.default.so
 vendor/lib64/hw/android.hardware.soundtrigger3-impl.so
-vendor/lib64/hw/sound_trigger.primary.default.so
 
 # Tether offload
 vendor/bin/hw/tetheroffloadservice
@@ -979,8 +959,6 @@ vendor/etc/vintf/manifest/android.hardware.usb-aidl-service.mediatek.xml
 vendor/etc/vintf/manifest/android.hardware.usb.gadget-aidl-service.mediatek.xml
 
 # Vibrator
-vendor/lib/hw/vibrator.default.so
-vendor/lib64/hw/vibrator.default.so
 
 # Wi-Fi
 vendor/bin/wmt_launcher
@@ -1088,8 +1066,6 @@ vendor/bin/sns_sensors_test_and_cal
 vendor/bin/soterd
 vendor/bin/stp_dump3
 vendor/bin/tee-supplicant
-vendor/bin/test-nusensor
-vendor/bin/test-nusensors
 vendor/bin/thermal_core
 vendor/bin/thermal_intf
 vendor/bin/tidad_mitee
@@ -1407,7 +1383,6 @@ vendor/firmware/txpowerctrl.cfg
 vendor/firmware/wifi.cfg
 vendor/framework/androidx.camera.extensions.impl.dummy.jar
 vendor/lib/hw/mt6789/mapper.mediatek.so
-vendor/lib/hw/audio_policy.stub.so
 vendor/lib/hw/libmbrainImpl.so
 vendor/lib/hw/thermal_hal.so
 vendor/lib/mt6789/arm.mali.platform-V2-ndk.so
@@ -1610,7 +1585,6 @@ vendor/lib/vendor.xiaomi.hardware.vsimapp-V1-ndk.so
 vendor/lib/vendor.xiaomi.sensor.citsensorservice-V1-ndk.so
 vendor/lib/vpp_hdrmeta_handler_plugin.so
 vendor/lib64/hw/mt6789/mapper.mediatek.so
-vendor/lib64/hw/audio_policy.stub.so
 vendor/lib64/hw/libmbrainImpl.so
 vendor/lib64/hw/thermal_hal.so
 vendor/lib64/mt6789/arm.mali.platform-V2-ndk.so
