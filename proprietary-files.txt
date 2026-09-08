@@ -93,7 +93,6 @@ vendor/lib/soundfx/libvolumesw.so
 vendor/lib/libdlbpreg.so
 vendor/lib/libdmshal.so
 vendor/lib/libspatializerparamstorage.so
-vendor/lib/libvibratorutils.so
 vendor/lib64/soundfx/libaecsw.so
 vendor/lib64/soundfx/libaecsw_mtk.so
 vendor/lib64/soundfx/libagc1sw.so
@@ -130,7 +129,6 @@ vendor/lib64/soundfx/libvolumesw.so
 vendor/lib64/libdlbpreg.so
 vendor/lib64/libdmshal.so
 vendor/lib64/libspatializerparamstorage.so
-vendor/lib64/libvibratorutils.so
 
 # Audio configs
 system_ext/etc/audio_policy_configuration_stub.xml
