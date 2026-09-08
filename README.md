@@ -111,6 +111,19 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 10 — libalsautils
+
+`module "libalsautils" ... partition is different: system(libalsautils) !=
+vendor(prebuilt_libalsautils)`. AOSP `system/media/alsa_utils`. Removed
+`vendor/lib{,64}/libalsautils.so`. `libalsautilsv2.so` (MediaTek's own) kept.
+A scan of the blob list against ~90 common AOSP `vendor_available` lib names
+found only this one still wrong.
+
+Note: the recurring kati warning
+`One culprit glob (may be more): device/xiaomi/taiko-kernel/...` is harmless -
+a stale glob cache for the removed dir; `rm -f out/.kati_stamp-lineage_taiko*`
+silences it. It is not the build failure.
+
 ### Round 9 — more "partition is different" (hw/mediatek interface libs)
 
 `vendor.mediatek.hardware.audio-V1-ndk` (built by `hardware/mediatek/interfaces/
