@@ -133,9 +133,9 @@ Verified OK:
 - No VNDK (`BOARD_VNDK_VERSION`) — correct, VNDK is deprecated on Android 16.
 - `system_dlkm` modules are the stock GKI set (KMI-locked to `6.12.30-android16-5`).
 
-- Dalvik heap: device is **4 GB RAM**; switched to
-  `phone-xhdpi-4096-dalvik-heap.mk` (heapgrowthlimit 256m / heapsize 512m),
-  which matches the stock `vendor/build.prop` values exactly.
+- Dalvik heap: device is **4 GB RAM**; the five stock `vendor/build.prop` heap
+  values are pinned directly in `device.mk` (growthlimit 256m / size 512m).
+  AOSP has no `tablet-*-4096` heap preset, so no `*-dalvik-heap.mk` is inherited.
 
 Still open: see TODO.
 
