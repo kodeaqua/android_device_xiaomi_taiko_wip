@@ -100,9 +100,14 @@ BOARD_PREBUILT_BOOTIMAGE := $(PREBUILT_PATH)/boot.img
 # vendor_boot (boot.img stays kernel-only), and
 # BOARD_INCLUDE_RECOVERY_RAMDISK_IN_VENDOR_BOOT emits the separate "recovery"
 # fragment (ramdisk_type = RECOVERY) - matching the stock table exactly.
+#
+# BOARD_INCLUDE_DTB_IN_BOOTIMG must be true: board_config.mk hard-errors on
+# "BOARD_PREBUILT_DTBIMAGE_DIR with BOARD_INCLUDE_DTB_IN_BOOTIMG != true". The
+# flag name says "BOOTIMG" but with TARGET_NO_KERNEL + prebuilt boot.img the DTB
+# is packed into the rebuilt vendor_boot, not boot.img (same as yunluo).
 # -----------------------------------------------------------------------------
 BOARD_VENDOR_BOOT_HEADER_VERSION := 4
-BOARD_INCLUDE_DTB_IN_BOOTIMG :=
+BOARD_INCLUDE_DTB_IN_BOOTIMG := true
 BOARD_INCLUDE_RECOVERY_RAMDISK_IN_VENDOR_BOOT := true
 
 BOARD_KERNEL_CMDLINE := bootopt=64S3,32N2,64N2
