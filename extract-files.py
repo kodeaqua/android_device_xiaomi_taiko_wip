@@ -37,10 +37,17 @@ namespace_imports = [
 # "namespace hardware/lineage/compat does not exist". The *_shim libs are still
 # usable directly by name in blob_fixups (.add_needed("libbase_shim.so") etc.).
 
+def lib_fixup_libcxx_shared(lib: str, partition: str, *args) -> str:
+    # NDK STL -> platform libc++ (ABI-compatible). Xiaomi MiAlgo camera libs
+    # record libc++_shared as a NEEDED, which is not a soong module.
+    return "libc++"
+
+
 lib_fixups: lib_fixups_user_type = {
     libs_clang_rt_ubsan: lib_fixup_remove_arch_suffix,
     libs_proto_3_9_1: lib_fixup_vendorcompat,
     libs_proto_21_12: lib_fixup_remove_proto_version_suffix,
+    ("libc++_shared",): lib_fixup_libcxx_shared,
 }
 
 patchelf_version = "0_17_2"
@@ -59,18 +66,6 @@ blob_fixups: blob_fixups_user_type = {
     "vendor/etc/init/android.hardware.neuralnetworks-shim-service-mtk.rc": blob_fixup().regex_replace(
         "start ", "enable "
     ),
-    # Xiaomi MiAlgo camera libs are built against the NDK STL (libc++_shared.so),
-    # which is not a soong module in a platform build. Point them at the platform
-    # libc++ (ABI-compatible in practice).
-    (
-        "vendor/lib64/libmialgo_sd.so",
-        "vendor/lib64/libmialgo_ai_vision.so",
-        "vendor/lib64/libmialgo_utils.so",
-        "vendor/lib64/libmialgoengine.so",
-        "vendor/lib64/libmialgoengine2.so",
-    ): blob_fixup()
-    .patchelf_version(patchelf_version)
-    .replace_needed("libc++_shared.so", "libc++.so"),
 }  # fmt: skip
 
 module = ExtractUtilsModule(
