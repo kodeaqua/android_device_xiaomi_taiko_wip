@@ -468,8 +468,14 @@ Still open: see TODO.
 - [ ] `extract-files.py` blob fixups — iterate against `check_elf` output.
 - [ ] `sepolicy/vendor` — rebuild from `dmesg | grep 'avc: denied'` on first boot;
       the copied yunluo rules only partially match.
-- [ ] `configs/audio|media|wifi` — diff against `vendor/etc/*` in the dump and
-      replace where the MT6789-generic yunluo copies differ.
+- [x] `configs/audio|media|wifi` — replaced the yunluo copies with taiko's own
+      from `dump-ota/vendor/etc/` (audio_policy_configuration, audio_effects,
+      audio_device, audio_em, aurisys_config, media_codecs_c2,
+      media_codecs_performance, media_profiles_V1_0, mtk_platform_codecs_config,
+      wpa_supplicant.conf, p2p_supplicant_overlay.conf). `configs/hals.conf`
+      deleted (the `vendor/etc/sensors/hals.conf` blob owns that path since the
+      Round-18 sensors rework). Still parked/not-in-dump: `powerhint.json`,
+      `aurisys_config_rv.xml`, `passpointProfile.conf`, `thermal_info_config.json`.
 - [ ] `configs/vintf/manifest.xml` + `compatibility_matrix.xml` — verify against
       `vendor/etc/vintf/*` from the dump.
 - [ ] `modules.load.recovery` currently mirrors `modules.load.vendor_ramdisk`;
@@ -479,10 +485,14 @@ Still open: see TODO.
       `configs/props/product.prop` once the device boots.
 - [ ] Decide `mi_ext` fate — kept mountable+nofail in fstab; a pure-AOSP build
       ships no mi_ext image.
-- [ ] `overlay/` + `overlay-lineage/` values are still yunluo's — fix panel
-      resolution / refresh-rate in `FrameworksResOverlay/res/values/config.xml`,
-      `power_profile.xml` (Redmi Pad 2 ~9000 mAh), Wi-Fi country, Settings
-      config, from the taiko dump / panel dtsi.
+- [~] `overlay/` + `overlay-lineage/` — `power_profile.xml` battery.capacity set
+      to 9000 (Redmi Pad 2 spec; no full power curve in the dump so the yunluo
+      per-component numbers stand). `config_defaultPeakRefreshRate` = 90 already
+      matches the 90 Hz panel. `TARGET_SCREEN_DENSITY` = 360 kept: the dump has
+      `ro.sf.lcd_density=480` in vendor/build.prop but `=360` in the vendor_boot
+      default and `persist.miui.density_v2=360` — 360 is the HyperOS user-facing
+      density and gives sw711dp on the 2560x1600 panel. Still yunluo's: the
+      auto-brightness nits/backlight curves, Wi-Fi country.
 - [ ] Re-sign with real AVB keys once unlocked-and-booting (currently AOSP test
       keys everywhere).
 ```

@@ -21,7 +21,17 @@
         <library name="downmix" path="libdownmix.so"/>
         <library name="loudness_enhancer" path="libldnhncr.so"/>
         <library name="dynamics_processing" path="libdynproc.so"/>
-        <library name="pre_processing" path="libaudiopreprocessing.so"/>
+        <library name="pre_processing" path="libaudiopreprocessing_mtk.so"/>
+        <library name="spatializer" path="libspatializer.so"/>
+        <library name="misoundfx" path="libmisoundfx_aidl.so"/>
+        <!--DOLBY DAP-->
+        <library name="dap" path="libswdapaidl.so"/>
+        <library name="dvl" path="libdlbvolaidl.so"/>
+        <!-- DOLBY SPATIALIZER -->
+        <library name="spatializer" path="libswspatializeraidl.so"/>
+        <!-- DOLBY GAME -->
+        <library name="gamedap" path="libswgamedapaidl.so"/>
+        <!-- DOLBY END -->
     </libraries>
 
     <!-- list of effects to load.
@@ -59,9 +69,22 @@
         <effect name="downmix" library="downmix" uuid="93f04452-e4fe-41cc-91f9-e475b6d1d69f"/>
         <effect name="loudness_enhancer" library="loudness_enhancer" uuid="fa415329-2034-4bea-b5dc-5b381c8d1e2c"/>
         <effect name="dynamics_processing" library="dynamics_processing" uuid="e0e6539b-1781-7261-676f-6d7573696340"/>
-        <effect name="agc" library="pre_processing" uuid="aa8130e0-66fc-11e0-bad0-0002a5d5c51b"/>
-        <effect name="aec" library="pre_processing" uuid="bb392ec0-8d4d-11e0-a896-0002a5d5c51b"/>
-        <effect name="ns" library="pre_processing" uuid="c06c8400-8e06-11e0-9cb6-0002a5d5c51b"/>
+        <effect name="aec" library="pre_processing" uuid="9f35ed76-0b66-4330-8f79-e39ca266dc7c"/>
+        <effect name="ns" library="pre_processing" uuid="300abe9f-dfc5-4340-9c4b-79ef1be4e651"/>
+        <effect name="agc" library="pre_processing" uuid="3387eb70-9896-4338-90f5-b2de883864c9"/>
+        <effect name="spatializer" library="spatializer" uuid="58151b10-6ae5-11ed-a1eb-0242ac120002"/>
+        <effect name="misoundfx" library="misoundfx" uuid="5b8e36a5-144a-4c38-b1d7-0002a5d5c51b"/>
+         <!--DOLBY DAP-->
+        <effect name="dap" library="dap" uuid="9d4921da-8225-4f29-aefa-39537a04bcaa"/>
+        <effect name="dlb_music_listener" library="dvl" uuid="40f66c8b-5aa5-4345-8919-53ec431aaa98"/>
+        <effect name="dlb_ring_listener" library="dvl" uuid="21d14087-558a-4f21-94a9-5002dce64bce"/>
+        <effect name="dlb_alarm_listener" library="dvl" uuid="6aff229c-30c6-4cc8-9957-dbfe5c1bd7f6"/>
+        <effect name="dlb_notification_listener" library="dvl" uuid="1f0091e3-6ad8-40fe-9b09-5948f9a26e7e"/>
+        <!--DOLBY SPATIALIZER-->
+        <effect name="spatializer" library="spatializer" uuid="ccd4cf09-a79d-46c2-9aae-06a1698d6c8f"/>
+        <!--DOLBY GAME-->
+        <effect name="gamedap" library="gamedap" uuid="3783c334-d3a0-4d13-874f-0032e5fb80e2"/>
+        <!--DOLBY END-->
     </effects>
 
     <!-- Audio pre processor configurations.
@@ -73,6 +96,20 @@
          Each "stream" element contains a list of "apply" elements indicating one effect to apply.
          The effect to apply is designated by its name in the "effects" elements.
     -->
+        <postprocess>
+            <stream type="music">
+                <apply effect="dlb_music_listener"/>
+            </stream>
+            <stream type="ring">
+                <apply effect="dlb_ring_listener"/>
+            </stream>
+            <stream type="alarm">
+                <apply effect="dlb_alarm_listener"/>
+            </stream>
+            <stream type="notification">
+                <apply effect="dlb_notification_listener"/>
+            </stream>
+        </postprocess>
         <preprocess>
             <stream type="voice_communication">
                 <apply effect="aec"/>
