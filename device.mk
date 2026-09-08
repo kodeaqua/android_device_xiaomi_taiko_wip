@@ -21,8 +21,14 @@ LOCAL_PATH := device/xiaomi/taiko
 $(call inherit-product, $(SRC_TARGET_DIR)/product/generic_ramdisk.mk)
 $(call inherit-product, $(SRC_TARGET_DIR)/product/emulated_storage.mk)
 $(call inherit-product, $(SRC_TARGET_DIR)/product/userspace_reboot.mk)
-$(call inherit-product, frameworks/native/build/tablet-10in-xhdpi-2048-dalvik-heap.mk)
 $(call inherit-product, $(SRC_TARGET_DIR)/product/updatable_apex.mk)
+
+# Dalvik heap: 4 GB RAM device. The AOSP "4096" profile
+# (heapstartsize 8m / heapgrowthlimit 256m / heapsize 512m / minfree 2m /
+# maxfree 8m / util 0.75) matches the stock vendor/build.prop values exactly.
+# The tablet-10in-*-2048 profile the tree was seeded with caps growthlimit at
+# 192m, which is tighter than stock.
+$(call inherit-product, frameworks/native/build/phone-xhdpi-4096-dalvik-heap.mk)
 
 # -----------------------------------------------------------------------------
 # Virtual A/B (compressed) - matches stock ro.virtual_ab.*

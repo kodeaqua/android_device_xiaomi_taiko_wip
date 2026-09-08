@@ -162,7 +162,7 @@ BOARD_DTBOIMG_PARTITION_SIZE := 8388608
 
 # TODO: confirm against the real GPT / super_map.pb from a fastboot dump.
 # 9126805504 is the value shipped on yunluo (Redmi Pad 1, same MT6789 platform)
-# and is the right ballpark for this 6/8 GB tablet; verify before release.
+# and is the right ballpark for this 4 GB tablet; verify before release.
 BOARD_SUPER_PARTITION_SIZE := 9126805504
 BOARD_SUPER_PARTITION_GROUPS := mtk_dynamic_partitions
 BOARD_MTK_DYNAMIC_PARTITIONS_PARTITION_LIST := \

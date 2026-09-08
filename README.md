@@ -133,8 +133,11 @@ Verified OK:
 - No VNDK (`BOARD_VNDK_VERSION`) — correct, VNDK is deprecated on Android 16.
 - `system_dlkm` modules are the stock GKI set (KMI-locked to `6.12.30-android16-5`).
 
-Still open: see TODO. Also `tablet-10in-xhdpi-2048-dalvik-heap.mk` is a modest
-heap for a 6/8 GB tablet — tune once booting.
+- Dalvik heap: device is **4 GB RAM**; switched to
+  `phone-xhdpi-4096-dalvik-heap.mk` (heapgrowthlimit 256m / heapsize 512m),
+  which matches the stock `vendor/build.prop` values exactly.
+
+Still open: see TODO.
 
 ## TODO before a flashable build
 
