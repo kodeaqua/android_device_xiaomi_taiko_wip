@@ -2216,7 +2216,6 @@ vendor/lib64/libimgsensorca.so
 vendor/lib64/libimgstream_sync.so
 vendor/lib64/libimgsys_osal.so
 vendor/lib64/libispcameraca.so
-vendor/lib64/libjpegdecoder.so
 vendor/lib64/libkeystore-wifi-hidl.so
 vendor/lib64/libmbrainSDKv.so
 vendor/lib64/libmcve.so
