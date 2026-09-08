@@ -30,6 +30,7 @@ MTK_SOC_SYMLINKS := \
     $(TARGET_OUT_VENDOR)/lib/hw/vendor.mediatek.hardware.pq_aidl-impl.so \
     $(TARGET_OUT_VENDOR)/lib/hw/vulkan.mali.so \
     $(TARGET_OUT_VENDOR)/lib/libaal_cust_func.so \
+    $(TARGET_OUT_VENDOR)/lib/libaiselector.so \
     $(TARGET_OUT_VENDOR)/lib/libarm_egl_properties_sysprop.so \
     $(TARGET_OUT_VENDOR)/lib/libarm_gralloc_properties_sysprop.so \
     $(TARGET_OUT_VENDOR)/lib/libarm_mali_config_sysprops.so \
@@ -63,6 +64,7 @@ MTK_SOC_SYMLINKS := \
     $(TARGET_OUT_VENDOR)/lib64/hw/vendor.mediatek.hardware.pq_aidl-impl.so \
     $(TARGET_OUT_VENDOR)/lib64/hw/vulkan.mali.so \
     $(TARGET_OUT_VENDOR)/lib64/libaal_cust_func.so \
+    $(TARGET_OUT_VENDOR)/lib64/libaiselector.so \
     $(TARGET_OUT_VENDOR)/lib64/libarm_egl_properties_sysprop.so \
     $(TARGET_OUT_VENDOR)/lib64/libarm_gralloc_properties_sysprop.so \
     $(TARGET_OUT_VENDOR)/lib64/libarm_mali_config_sysprops.so \
