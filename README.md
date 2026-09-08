@@ -120,6 +120,33 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 26 — AOSP-core re-audit (dynamic partitions / VAB / AVB / fstab)
+
+Re-checked BoardConfig.mk + device.mk + fstab against source.android.com
+(dynamic-partitions/implement, virtual_ab/implement, verifiedboot) + the stock
+`vendor/etc/fstab.mt6789` + `MT6789_Android_scatter.txt`:
+
+- **fstab bug fixed**: the external-SD rule was
+  `/devices/platform/soc/11230000.msdc*` but the real uevent path (stock fstab)
+  is `/devices/platform/soc/soc:odm/11230000.msdc*` — SD card would not have
+  mounted. `11240000.mmc*` was already correct.
+- Verified OK: `PRODUCT_USE_DYNAMIC_PARTITIONS := true` (device.mk),
+  `BOARD_SUPER_PARTITION_METADATA_DEVICE := super` (launch device, real super),
+  no `BOARD_SUPER_PARTITION_BLOCK_DEVICES` (retrofit-only), group size =
+  `BOARD_SUPER_PARTITION_SIZE − 4 MiB` (Virtual A/B launch rule, not `/2`).
+  VAB via `virtual_ab_ota/launch_with_vendor_ramdisk.mk` (same as yunluo);
+  `ro.virtual_ab.*` props match the dump. AVB `--flags 3` + test keys +
+  chained `vbmeta_system`/`vbmeta_vendor` (rollback locations 1/2/3/4 unique) =
+  the proven yunluo pattern, with our A16 additions (`system_dlkm` under
+  `vbmeta_system`, `vendor_dlkm`+`odm_dlkm` under `vbmeta_vendor`).
+- `ro.vendor.build.dont_use_vabc=true` in `configs/props/vendor.prop` IS a real
+  stock prop (`dump-ota/vendor/build.prop:231`) — kept; it just makes OTAs use
+  uncompressed snapshots. First flash is fastboot so it doesn't matter for
+  bring-up. Candidate for the post-boot HyperOS-prop trim.
+- Stock fstab lists `init_boot` but the scatter + OTA payload do not have that
+  partition (the fstab is a MT6789-generic template) — our omission is correct,
+  CLAUDE.md "no init_boot" stands.
+
 ### Round 25 — double-defined modules.load
 
 `Makefile:712: error: overriding commands for target
