@@ -84,6 +84,7 @@ blob_fixups: blob_fixups_user_type = {
     # package and V7 is a backward-compatible superset, so bump the NEEDED to V7
     # on every consumer blob (same rationale as libmt_mitee keymint V3->V4).
     (
+        "vendor/bin/hw/mt6789/android.hardware.graphics.allocator-V2-service-mediatek.mt6789",
         "vendor/lib/hw/mt6789/android.hardware.graphics.allocator-V2-mediatek.so",
         "vendor/lib64/hw/mt6789/android.hardware.graphics.allocator-V2-mediatek.so",
         "vendor/lib/hw/mt6789/mapper.mediatek.so",
@@ -105,6 +106,19 @@ blob_fixups: blob_fixups_user_type = {
     .replace_needed(
         "android.hardware.graphics.common-V6-ndk.so",
         "android.hardware.graphics.common-V7-ndk.so",
+    ),
+    # sensors AIDL skew: the MTK PQ HAL impl links sensors-V2 (HyperOS A16),
+    # but the source android.frameworks.sensorservice-V1-ndk on lineage-23.2
+    # pulls sensors-V3. Frozen AIDL versions are add-only, so V3 is a superset;
+    # bump the NEEDED to V3.
+    (
+        "vendor/lib/hw/mt6789/vendor.mediatek.hardware.pq_aidl-impl.so",
+        "vendor/lib64/hw/mt6789/vendor.mediatek.hardware.pq_aidl-impl.so",
+    ): blob_fixup()
+    .patchelf_version(patchelf_version)
+    .replace_needed(
+        "android.hardware.sensors-V2-ndk.so",
+        "android.hardware.sensors-V3-ndk.so",
     ),
 }  # fmt: skip
 

@@ -123,7 +123,10 @@ types-only package and V7 is a backward-compatible superset, so `extract-files.p
 (`android.hardware.graphics.allocator-V2-mediatek`, `mapper.mediatek`,
 `hwcomposer.mtk_common`, `libgpud`, `libcodec2_fsr`, `libaimemc`,
 `libcodec2_vpp_AIMEMC/AISR_plugin`, `vendor.mediatek.hardware.pq_aidl-V3/V7-ndk`).
-Same technique as the libmt_mitee keymint V3 -> V4 fix.
+Same technique as the libmt_mitee keymint V3 -> V4 fix. Second pass added the
+`allocator-V2-service-mediatek.mt6789` binary itself (direct graphics.common-V6
+NEEDED) and bumped `pq_aidl-impl` sensors-V2 -> V3 (source
+`android.frameworks.sensorservice-V1-ndk` pulls sensors-V3).
 
 ### Rounds 12-14 — trailing AOSP vendor_available collisions
 
