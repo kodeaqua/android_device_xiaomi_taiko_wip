@@ -41,7 +41,6 @@ vendor/lib/libaudiotoolkit_vendor.so
 vendor/lib/libbluetooth_audio_session_aidl_mtk.so
 vendor/lib/libbwc.so
 vendor/lib/libmisight.so
-vendor/lib/server_configurable_flags.so
 vendor/lib64/hw/audio.primary.default.so
 vendor/lib64/hw/audio.primary.mediatek.so
 vendor/lib64/hw/audio.primary.mt6789.so
@@ -54,7 +53,6 @@ vendor/lib64/libaudiotoolkit_vendor.so
 vendor/lib64/libbluetooth_audio_session_aidl_mtk.so
 vendor/lib64/libbwc.so
 vendor/lib64/libmisight.so
-vendor/lib64/server_configurable_flags.so
 
 # Audio (FX modules)
 vendor/lib/soundfx/libaecsw.so
