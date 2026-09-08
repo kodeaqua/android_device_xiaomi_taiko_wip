@@ -136,6 +136,17 @@ BOARD_PREBUILT_DTBIMAGE_DIR := $(PREBUILT_PATH)/dtb
 BOARD_PREBUILT_DTBOIMAGE := $(PREBUILT_PATH)/dtbo.img
 
 # -----------------------------------------------------------------------------
+# Kernel source - there is none (stock GKI prebuilt, TARGET_NO_KERNEL). But
+# LineageOS' `generated_kernel_includes` Soong genrule (pulled in by any module
+# using the `generated_kernel_headers` header_lib - libjni_poweroffalarm from
+# hardware/mediatek/packages/PowerOffAlarm) runs `make -C $(TARGET_KERNEL_SOURCE)
+# headers_install`, and TARGET_KERNEL_SOURCE defaults to kernel/$(TARGET_DEVICE_DIR)
+# = kernel/xiaomi/taiko (nonexistent -> "No such file or directory. Stop."). Point
+# it at an in-tree stub Makefile whose headers_install just makes an empty
+# usr/include; the sole consumer only needs bionic-sysroot UAPI headers.
+TARGET_KERNEL_SOURCE := $(DEVICE_PATH)/kernel-headers
+
+# -----------------------------------------------------------------------------
 # Kernel modules (all prebuilt .ko, KMI-matched to the stock GKI build)
 # -----------------------------------------------------------------------------
 # vendor_boot (first-stage) ramdisk modules

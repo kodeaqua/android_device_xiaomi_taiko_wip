@@ -108,8 +108,8 @@ and lists blobs with missing `NEEDED` libs — add `blob_fixups` and re-extract.
 ## Status (2026-09-08)
 
 Pushed to `kodeaqua/android_device_xiaomi_taiko_wip` `lineage-23.2`. Passed
-soong bootstrap + kati (30 fix rounds, logged below); **compiling under ninja**
-(reached `//build/soong:product-build.prop`, ~2%, before the Round 30 prop fix).
+soong bootstrap + kati (31 fix rounds, logged below); **compiling under ninja**
+(reached ~7%, `generated_kernel_includes`, before the Round 31 fix).
 Build runs on a separate machine — errors are pasted in and fixed here. Camera
 enabled; `configs/audio|media|wifi` = taiko's own; `BOARD_SUPER_PARTITION_SIZE`
 = 11 GiB from the scatter. See the workspace `../../../CLAUDE.md` "Build status"
@@ -120,6 +120,39 @@ for the fix-class cheat sheet.
 Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
+
+### Round 31 — `generated_kernel_includes` vs no kernel source
+
+`//vendor/lineage/build/soong:generated_kernel_includes generate` fails:
+`make: *** kernel/xiaomi/taiko: No such file or directory.  Stop.`
+
+LineageOS' `generated_kernel_includes` `lineage_generator` (a Soong genrule)
+runs `make -C $(TARGET_KERNEL_SOURCE) O=<genDir> ARCH=arm64 headers_install`
+whenever a built module lists the `generated_kernel_headers` `header_lib`. It is
+**not** gated by `TARGET_NO_KERNEL` (that only gates the make-side
+`vendor/lineage/build/tasks/kernel.mk`). `TARGET_KERNEL_SOURCE` defaults to
+`kernel/$(TARGET_DEVICE_DIR)` = `kernel/xiaomi/taiko`, which doesn't exist on a
+prebuilt-kernel tree.
+
+Consumer trace (`grep -rn generated_kernel_headers device/ hardware/`):
+`libjni_poweroffalarm` (`hardware/mediatek/packages/PowerOffAlarm`, pulled by
+`PRODUCT_PACKAGES += PowerOffAlarm` in `device.mk`) and
+`hardware/xiaomi/fingerprint` (not built - taiko has no fingerprint). So
+`PowerOffAlarm` is the trigger. Its JNI includes only `<linux/ioctl.h>`,
+`<linux/rtc.h>`, `<sys/timerfd.h>` - all from the bionic sysroot, no device
+kernel headers needed. `TARGET_PREBUILT_KERNEL_HEADERS` only feeds the sibling
+`prebuilt_kernel_includes` module, which `PowerOffAlarm` does not reference, so
+it can't redirect this.
+
+Fix: `TARGET_KERNEL_SOURCE := $(DEVICE_PATH)/kernel-headers` (BoardConfig.mk) ->
+a stub `kernel-headers/Makefile` whose `headers_install` target just
+`mkdir -p "$(O)/usr/include"`. The genrule succeeds with an empty export dir;
+`clean_headers.sh`'s `clean_header.py -u .../asm/signal.h` scrub only *warns*
+(non-fatal) in update mode when the tree is bare (`print_error` panics only when
+`no_update`). `VERSION = 6` / `PATCHLEVEL = 12` in the stub keep
+`BoardConfigKernel.mk`'s `TARGET_KERNEL_VERSION` derivation = `6.12` (stock GKI),
+so `TARGET_KERNEL_NO_GCC` stays auto-true and no GCC-prebuilt toolchain paths
+are wired for a build that never compiles a kernel.
 
 ### Round 30 — dump props colliding with Soong `gen_build_prop` output
 
