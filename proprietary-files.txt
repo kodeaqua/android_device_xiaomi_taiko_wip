@@ -2327,7 +2327,6 @@ vendor/lib64/libtida_mitee.so
 vendor/lib64/libtranslator_mapi_v3.0.so
 vendor/lib64/libtranslator_mdmi_v2.8.2.so
 vendor/lib64/libtranslator_utils.so
-vendor/lib64/libultrahdr.so
 vendor/lib64/libultrahdr_mtk.so
 vendor/lib64/libvcodec_oal.so
 vendor/lib64/libvcodecdrv_header_stub.so
