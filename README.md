@@ -111,6 +111,20 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 15 — graphics.common V6 -> V7 AIDL skew
+
+`module "libgpud" / "hwcomposer.mtk_common" ... depends on multiple versions of
+the same aidl_interface: android.hardware.graphics.common-V6-ndk vs -V7-ndk`.
+HyperOS Android 16 froze `graphics.common` at V6; LineageOS 23.2 trunk is at V7.
+Source `libgralloctypes` / `libui` / `graphics.allocator-V2-ndk` pull V7, the MTK
+gralloc/mapper/allocator/HWC/GPU/codec2/pq blobs pull V6. `graphics.common` is a
+types-only package and V7 is a backward-compatible superset, so `extract-files.py`
+`blob_fixups` `replace_needed` V6 -> V7 on every consumer blob
+(`android.hardware.graphics.allocator-V2-mediatek`, `mapper.mediatek`,
+`hwcomposer.mtk_common`, `libgpud`, `libcodec2_fsr`, `libaimemc`,
+`libcodec2_vpp_AIMEMC/AISR_plugin`, `vendor.mediatek.hardware.pq_aidl-V3/V7-ndk`).
+Same technique as the libmt_mitee keymint V3 -> V4 fix.
+
 ### Rounds 12-14 — trailing AOSP vendor_available collisions
 
 More one-at-a-time `partition is different`, removed as they surfaced:

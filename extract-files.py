@@ -76,6 +76,36 @@ blob_fixups: blob_fixups_user_type = {
         "android.hardware.security.keymint-V3-ndk.so",
         "android.hardware.security.keymint-V4-ndk.so",
     ),
+    # graphics.common AIDL skew: the MTK gralloc / mapper / allocator / HWC /
+    # GPU / codec2 blobs were built against android.hardware.graphics.common-V6
+    # (HyperOS Android 16), but LineageOS 23.2 trunk froze V7. libgralloctypes /
+    # libui / graphics.allocator-V2-ndk (source) pull V7 -> "depends on multiple
+    # versions of the same aidl_interface". graphics.common is a types-only
+    # package and V7 is a backward-compatible superset, so bump the NEEDED to V7
+    # on every consumer blob (same rationale as libmt_mitee keymint V3->V4).
+    (
+        "vendor/lib/hw/mt6789/android.hardware.graphics.allocator-V2-mediatek.so",
+        "vendor/lib64/hw/mt6789/android.hardware.graphics.allocator-V2-mediatek.so",
+        "vendor/lib/hw/mt6789/mapper.mediatek.so",
+        "vendor/lib64/hw/mt6789/mapper.mediatek.so",
+        "vendor/lib64/hw/hwcomposer.mtk_common.so",
+        "vendor/lib/libgpud.so",
+        "vendor/lib64/libgpud.so",
+        "vendor/lib/libcodec2_fsr.so",
+        "vendor/lib64/libcodec2_fsr.so",
+        "vendor/lib64/libaimemc.so",
+        "vendor/lib64/libcodec2_vpp_AIMEMC_plugin.so",
+        "vendor/lib64/libcodec2_vpp_AISR_plugin.so",
+        "vendor/lib/vendor.mediatek.hardware.pq_aidl-V3-ndk.so",
+        "vendor/lib64/vendor.mediatek.hardware.pq_aidl-V3-ndk.so",
+        "vendor/lib/vendor.mediatek.hardware.pq_aidl-V7-ndk.so",
+        "vendor/lib64/vendor.mediatek.hardware.pq_aidl-V7-ndk.so",
+    ): blob_fixup()
+    .patchelf_version(patchelf_version)
+    .replace_needed(
+        "android.hardware.graphics.common-V6-ndk.so",
+        "android.hardware.graphics.common-V7-ndk.so",
+    ),
 }  # fmt: skip
 
 module = ExtractUtilsModule(
