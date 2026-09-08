@@ -23,19 +23,18 @@ $(call inherit-product, $(SRC_TARGET_DIR)/product/emulated_storage.mk)
 $(call inherit-product, $(SRC_TARGET_DIR)/product/userspace_reboot.mk)
 $(call inherit-product, $(SRC_TARGET_DIR)/product/updatable_apex.mk)
 
-# Dalvik heap - set explicitly to the stock vendor/build.prop values (4 GB RAM
-# device). AOSP only ships tablet-*-{1024,2048} heap presets - there is no
-# tablet-*-4096 - and the "phone" vs "tablet" prefix on those files is just a
-# filename, not a form-factor switch (PRODUCT_CHARACTERISTICS := tablet is what
-# drives tablet behaviour). Rather than inherit a mis-named "phone-4096"
-# preset, the five stock values are pinned here 1:1.
-PRODUCT_PRODUCT_PROPERTIES += \
-    dalvik.vm.heapstartsize=8m \
-    dalvik.vm.heapgrowthlimit=256m \
-    dalvik.vm.heapsize=512m \
-    dalvik.vm.heaptargetutilization=0.75 \
-    dalvik.vm.heapminfree=2m \
-    dalvik.vm.heapmaxfree=8m
+# Dalvik heap - 4 GB RAM device.
+# frameworks/native here is the LineageOS fork (android_frameworks_native,
+# lineage-23.2); its build/*-dalvik-heap.mk are Lineage's own values, not AOSP.
+# There is no tablet-*-4096 profile (Lineage tablet presets stop at 2048), and
+# the "phone"/"tablet" prefix is just a filename - PRODUCT_CHARACTERISTICS is
+# what selects tablet behaviour. phone-xhdpi-4096 is the Lineage 4 GB profile:
+#   heapstartsize 8m / heapgrowthlimit 192m / heapsize 512m /
+#   heaptargetutilization 0.6 / heapminfree 8m / heapmaxfree 16m   (all ?=)
+# Intentionally tighter than the HyperOS stock tuning (growthlimit 256m,
+# util 0.75) - better headroom on 4 GB. Override individual values in
+# configs/props if a workload needs it.
+$(call inherit-product, frameworks/native/build/phone-xhdpi-4096-dalvik-heap.mk)
 
 # -----------------------------------------------------------------------------
 # Virtual A/B (compressed) - matches stock ro.virtual_ab.*
