@@ -45,7 +45,6 @@ vendor/lib/libaudiotoolkit_vendor.so
 vendor/lib/libbluetooth_audio_session_aidl_mtk.so
 vendor/lib/libbwc.so
 vendor/lib/libflatbuffers-cpp.so
-vendor/lib/libmediautils_vendor.so
 vendor/lib/libmisight.so
 vendor/lib/libtinyalsav2.so
 vendor/lib/server_configurable_flags.so
@@ -65,7 +64,6 @@ vendor/lib64/libaudiotoolkit_vendor.so
 vendor/lib64/libbluetooth_audio_session_aidl_mtk.so
 vendor/lib64/libbwc.so
 vendor/lib64/libflatbuffers-cpp.so
-vendor/lib64/libmediautils_vendor.so
 vendor/lib64/libmisight.so
 vendor/lib64/libtinyalsav2.so
 vendor/lib64/server_configurable_flags.so
@@ -1365,13 +1363,11 @@ vendor/bin/hw/android.hardware.sensors-service.multihal
 vendor/etc/init/android.hardware.sensors-service-multihal.rc
 vendor/etc/vintf/manifest/android.hardware.sensors-multihal.xml
 vendor/lib/hw/sensors.dynamic_sensor_hal.so
-vendor/lib/libcamera2ndk_vendor.so
 vendor/lib/libhidparser.so
 vendor/lib/sensors.camera.light.so
 vendor/lib64/hw/sensors.dynamic_sensor_hal.so
 vendor/lib64/hw/sensors.mediatek.V2.0.so
 vendor/lib64/hw/sensors.mt6789.so
-vendor/lib64/libcamera2ndk_vendor.so
 vendor/lib64/libhfmanager.so
 vendor/lib64/libhidparser.so
 vendor/lib64/sensors.camera.light.so

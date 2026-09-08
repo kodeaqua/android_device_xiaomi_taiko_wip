@@ -111,6 +111,16 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Rounds 12-14 — trailing AOSP vendor_available collisions
+
+More one-at-a-time `partition is different`, removed as they surfaced:
+- keymint/keystore: `lib_android_keymaster_keymint_utils`, `libcppbor`,
+  `libcppbor_external`, `libkeymint`, `libkeymint_remote_prov_support`,
+  `libkeymint_support` (mitee keymint service links the source vendor variants).
+- `libsensorndkbridge`, `libmediautils_vendor`, `libcamera2ndk_vendor`.
+MediaTek's own `lib*_vendor.so` (audio/gpu/camera) are kept - the `_vendor`
+suffix there is just MTK's naming, not the AOSP vendor-variant leak.
+
 ### Round 11 — dmabuf_dump + AOSP tool bins
 
 `module "dmabuf_dump" ... partition is different`. AOSP `system/memory/libmeminfo`.
