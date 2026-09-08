@@ -108,7 +108,32 @@ re-run.
 ## AOSP-core audit (source.android.com/docs/core)
 
 Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
-dynamic-partitions, loadable-kernel-modules, vndk build-system.
+dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
+SELinux device policy.
+
+### Round 2 — VINTF / SELinux
+
+- `configs/vintf/manifest.xml` replaced with the **stock** device manifest
+  (aospdtgen's copy dropped `<sepolicy><version>202504</version>` and the HAL
+  `<version>` tags — omitting `<sepolicy>` is a documented VINTF mistake).
+- `DEVICE_MATRIX_FILE` **removed** (deleted `compatibility_matrix.xml`). The
+  stock device matrix mandates `vendor.mediatek.framework.mtksf_ext` /
+  `vendor.mediatek.hardware.mbrainj` (need the `mediatek-common` framework jar,
+  not built) and the seeded yunluo copy mandated dead HIDL `sensorservice@1.0`
+  — either would fail the boot-time VINTF check. LineageOS' default device
+  matrix is used.
+- **Power HAL kept as the stock MediaTek blob**, `pixel-libperfmgr` dropped:
+  `power-mediatek.xml` already declares `android.hardware.power/IPower/default`,
+  so adding pixel-libperfmgr would double-declare IPower and race two services.
+- `sepolicy/vendor/file_contexts` rewritten to taiko's real blob names:
+  added `keymint@4.0-service.mitee` (mtk base only labels `@3.0` → keystore
+  would run unlabeled), `lights-service.mediatek`, `dumpstate-service.xiaomi`;
+  dropped the yunluo-only `light-service.xiaomi` / `sensors-service.xiaomi-multihal`
+  / `power-service.pixel-libperfmgr` lines.
+- `genfs_contexts` is still yunluo's hardware — sysfs paths (charger i2c, wakeup
+  nodes, GPU) will mismatch and must be regenerated from first-boot denials.
+
+### Round 1
 
 Fixed:
 - `BOARD_INCLUDE_RECOVERY_RAMDISK_IN_VENDOR_BOOT := true` added — required

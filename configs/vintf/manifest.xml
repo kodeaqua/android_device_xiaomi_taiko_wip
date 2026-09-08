@@ -1,6 +1,15 @@
+<!--
+     Device VINTF manifest - Xiaomi Redmi Pad 2 (taiko)
+     Verbatim from stock vendor/etc/vintf/manifest.xml (BP2A.250605.031.A3):
+     keeps target-level=202504 (Android 16), <sepolicy><version>202504</version>,
+     and the MediaTek/Xiaomi vendor-extension HALs. Core-HAL entries come from
+     the per-service manifest fragments in vendor/etc/vintf/manifest/*.xml
+     (shipped by the blobs / built HALs), not from this file.
+-->
 <manifest version="9.0" type="device" target-level="202504">
     <hal format="aidl">
         <name>android.hardware.soundtrigger3</name>
+        <version>3</version>
         <fqname>ISoundTriggerHw/default</fqname>
     </hal>
     <hal format="aidl">
@@ -61,6 +70,7 @@
     </hal>
     <hal format="aidl">
         <name>vendor.mediatek.hardware.pq_aidl</name>
+        <version>7</version>
         <fqname>IPictureQuality_AIDL/default</fqname>
     </hal>
     <hal format="aidl">
@@ -87,4 +97,7 @@
         <name>vendor.xiaomi.hardware.vsimapp</name>
         <fqname>IVSIMService/default</fqname>
     </hal>
+    <sepolicy>
+        <version>202504</version>
+    </sepolicy>
 </manifest>

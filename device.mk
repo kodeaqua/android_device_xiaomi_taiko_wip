@@ -115,14 +115,19 @@ PRODUCT_PACKAGES += \
 $(call inherit-product, hardware/mediatek/overlay/mssi.mk)
 
 # -----------------------------------------------------------------------------
-# Power - no core android.hardware.power blob (only the mtkpower vendor
-# extension), so use the Lineage/pixel libperfmgr HAL.
-# -----------------------------------------------------------------------------
-PRODUCT_PACKAGES += \
-    android.hardware.power-service.pixel-libperfmgr
-
-PRODUCT_COPY_FILES += \
-    $(LOCAL_PATH)/configs/powerhint.json:$(TARGET_COPY_OUT_VENDOR)/etc/powerhint.json
+# Power - use the STOCK MediaTek power stack (blob).
+# vendor.mediatek.hardware.mtkpower-service.mediatek registers BOTH
+# vendor.mediatek.hardware.mtkpower AND android.hardware.power/IPower/default
+# (see the power-mediatek.xml manifest fragment). Adding
+# android.hardware.power-service.pixel-libperfmgr would put a SECOND IPower in
+# the manifest and a second service racing at runtime, so it is intentionally
+# NOT used here. Switching to pixel-libperfmgr is a follow-up that also has to
+# strip the mtkpower AIDL service + power-mediatek.xml and prove the perf blobs
+# still bind - do it with on-device testing, not blind.
+# configs/powerhint.json is kept in-tree for that future switch but not copied.
+# libmtkperf_client_vendor / libperfctl_vendor / libpowerhalwrap_vendor are
+# still built from source (23.2) - they are the client side and pair with the
+# stock libpowerhal.so blob.
 
 # -----------------------------------------------------------------------------
 # LineageOS Health (charging control) - separate from the stock health blob

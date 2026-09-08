@@ -283,7 +283,11 @@ BOOT_SECURITY_PATCH := 2026-08-01
 # VINTF
 # -----------------------------------------------------------------------------
 DEVICE_MANIFEST_FILE := $(CONFIGS_PATH)/vintf/manifest.xml
-DEVICE_MATRIX_FILE := $(CONFIGS_PATH)/vintf/compatibility_matrix.xml
+# No DEVICE_MATRIX_FILE: the stock device compatibility_matrix.xml requires the
+# MediaTek framework extensions (vendor.mediatek.framework.mtksf_ext,
+# vendor.mediatek.hardware.mbrainj) that only exist when the mediatek-common
+# framework jar is built - we do not build it. LineageOS' default device
+# compatibility matrix is used instead (OTA-time check only).
 DEVICE_FRAMEWORK_COMPATIBILITY_MATRIX_FILE := \
     hardware/mediatek/vintf/mediatek_framework_compatibility_matrix.xml \
     vendor/lineage/config/device_framework_matrix.xml

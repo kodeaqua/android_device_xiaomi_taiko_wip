@@ -24,7 +24,7 @@ seeded from is `lineage-23.0` — see "LineageOS 23.2 deltas" below.
 | `proprietary-files.txt` | ~3.5k blobs (aospdtgen, this exact build) |
 | `proprietary-firmware.txt` | non-super firmware partitions (`dpm`, `gz`, `lk`, `md1img`, `tee`, …) |
 | `configs/props/*.prop` | per-partition props, wired via `TARGET_*_PROP` in `BoardConfig.mk` |
-| `configs/vintf/` | device manifest + compat matrix |
+| `configs/vintf/manifest.xml` | device VINTF manifest — **verbatim stock** (has `<sepolicy><version>202504</version>` + HAL `<version>`s). No `compatibility_matrix.xml` / `DEVICE_MATRIX_FILE` — stock's needs the unbuilt `mediatek-common` jar; Lineage default is used. |
 | `configs/audio\|media\|wifi\|seccomp/` | MT6789-generic, **copied from yunluo — refine from `dump-ota/vendor/etc`** |
 | `rootdir/etc/fstab.mt6789` | first-stage **and** recovery fstab (erofs+ext4 fallback lines) |
 | `rootdir/etc/*.rc`, `rootdir/bin/*.sh` | MTK init scripts from the stock vendor ramdisk; each has a `prebuilt_etc`/`sh_binary` in `rootdir/Android.bp` **and** a line in `device.mk` `PRODUCT_PACKAGES` — keep both in sync |
@@ -94,6 +94,13 @@ RRO overlays, init scripts, feature permission XMLs.
 
 **Never** add a `hardware/mediatek` source HAL that a blob already covers with a
 DIFFERENT name (bluetooth, boot, audio, usb, vibrator) — you'd run two.
+
+**Power**: stock MediaTek blob (`vendor.mediatek.hardware.mtkpower-service.mediatek`
++ `power-mediatek.xml`) provides `android.hardware.power/IPower/default`. Do NOT
+add `android.hardware.power-service.pixel-libperfmgr` without also removing
+`power-mediatek.xml` and the mtkpower AIDL service from `proprietary-files.txt` —
+two IPower manifest entries + two racing services otherwise. `configs/powerhint.json`
+is parked for that future switch, currently uncopied.
 
 ## LineageOS 23.2 deltas (vs the yunluo 23.0 seed)
 

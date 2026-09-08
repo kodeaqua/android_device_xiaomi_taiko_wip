@@ -1,18 +1,26 @@
-# Graphics
-/sys/devices/virtual/mi_display/disp_feature/disp-DSI-+[0-1](/.*)?         u:object_r:vendor_sysfs_displayfeature:s0
+# Xiaomi Redmi Pad 2 (taiko) - device file_contexts
+#
+# Only entries that the AOSP core policy and device/mediatek/sepolicy_vndr
+# (lineage-23.2 base/vendor/file_contexts) do NOT already cover. Everything
+# else - and every runtime denial - is worked out on-device with
+# `dmesg | grep 'avc: denied'` and audit2allow during bring-up.
 
-# Lights
-/(vendor|system/vendor)/bin/hw/android\.hardware\.light-service\.xiaomi u:object_r:hal_light_default_exec:s0
+# --- keystore: mitee, keymint AIDL v4 -----------------------------------------
+# mtk base labels only ...keymint@3.0-service.mitee ; the taiko blob is @4.0.
+/(vendor|system/vendor)/bin/hw/android\.hardware\.security\.keymint@4\.0-service\.mitee    u:object_r:hal_keymint_default_exec:s0
 
-# Power
-/(vendor|system/vendor)/bin/hw/android\.hardware\.power-service\.pixel-libperfmgr u:object_r:hal_power_default_exec:s0
+# --- lights: MediaTek AIDL (taiko blob is "lights-service.mediatek") ---------
+/(vendor|system/vendor)/bin/hw/android\.hardware\.lights-service\.mediatek                 u:object_r:hal_light_default_exec:s0
 
-# Sensors
-/vendor/bin/hw/android\.hardware\.sensors-service\.xiaomi-multihal u:object_r:hal_sensors_default_exec:s0
+# --- dumpstate: Xiaomi -------------------------------------------------------
+/(vendor|system/vendor)/bin/hw/android\.hardware\.dumpstate-service\.xiaomi                u:object_r:hal_dumpstate_default_exec:s0
 
-# Thermal
-/(vendor|system/vendor)/bin/mi_thermald u:object_r:mi_thermald_exec:s0
+# --- Xiaomi thermal daemon (blob: /vendor/bin/mi_thermald) ------------------
+# domain + exec_type defined in mi_thermald.te
+/(vendor|system/vendor)/bin/mi_thermald                                                    u:object_r:mi_thermald_exec:s0
 
-# Touch panel gesture
-/sys/devices/virtual/touch/touch_dev/gesture_double_tap_state u:object_r:sysfs_tp_gesture:s0
+# --- Display feature sysfs (Xiaomi mi_display) -----------------------------
+/sys/devices/virtual/mi_display/disp_feature/disp-DSI-+[0-1](/.*)?                          u:object_r:vendor_sysfs_displayfeature:s0
 
+# --- Touch double-tap gesture node ---------------------------------------
+/sys/devices/virtual/touch/touch_dev/gesture_double_tap_state                              u:object_r:sysfs_tp_gesture:s0
