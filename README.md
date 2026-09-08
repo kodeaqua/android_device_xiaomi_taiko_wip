@@ -120,6 +120,20 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 27 — duplicate genfscon entries vs the MediaTek base
+
+`device/xiaomi/taiko/sepolicy/vendor/genfs_contexts:7:ERROR 'duplicate entry for
+genfs entry (sysfs, /devices/platform/soc/10228000.gce/wakeup)'` from
+`checkpolicy` while building `vendor_sepolicy.cil.raw`. Unlike `type` /
+`typeattribute`, `genfscon` rejects a duplicate `(fs, path)` even when the
+context is byte-identical, and `checkpolicy` aborts on the first one. The
+yunluo-seeded `genfs_contexts` re-declared 15 wakeup/extcon sysfs paths that
+`device/mediatek/sepolicy_vndr/base/vendor/genfs_contexts` already labels
+`sysfs_wakeup` / `sysfs_extcon`. Dropped all 15; kept only the taiko-specific
+paths not in the base (charger/panel/touch i2c wakeups, `extcon_usb1`, the mali
+gpu node, the two `vendor_sysfs_usb_supply` health nodes). Still yunluo-derived
+and needs first-boot `avc` iteration for the remaining paths.
+
 ### Round 26 — AOSP-core re-audit (dynamic partitions / VAB / AVB / fstab)
 
 Re-checked BoardConfig.mk + device.mk + fstab against source.android.com
