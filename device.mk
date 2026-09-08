@@ -243,16 +243,13 @@ PRODUCT_COPY_FILES += \
     $(call find-copy-subdir-files,*,$(LOCAL_PATH)/configs/media/,$(TARGET_COPY_OUT_VENDOR)/etc) \
     $(call find-copy-subdir-files,*,$(LOCAL_PATH)/configs/seccomp/,$(TARGET_COPY_OUT_VENDOR)/etc/seccomp_policy) \
     $(call find-copy-subdir-files,*,$(LOCAL_PATH)/configs/wifi/,$(TARGET_COPY_OUT_VENDOR)/etc/wifi) \
-    $(LOCAL_PATH)/configs/thermal_info_config.json:$(TARGET_COPY_OUT_VENDOR)/etc/thermal_info_config.json \
-    $(LOCAL_PATH)/configs/vintf/manifest/android.hardware.audio.service-aidl.mediatek.xml:$(TARGET_COPY_OUT_VENDOR)/etc/vintf/manifest/android.hardware.audio.service-aidl.mediatek.xml
+    $(LOCAL_PATH)/configs/thermal_info_config.json:$(TARGET_COPY_OUT_VENDOR)/etc/thermal_info_config.json
 
-# The MTK audio-core AIDL VINTF fragment ships in the dump as
-# vendor/etc/vintf/manifest/android.hardware.audio.service-aidl.xml, but
-# hardware/interfaces/audio/aidl/default already registers a prebuilt_etc of
-# that exact name -> kati "MODULE.TARGET.ETC ... already defined". VINTF
-# dir-scans manifest/*.xml regardless of filename, so ship the same content
-# from the tree via PRODUCT_COPY_FILES (no module, no clash) under a
-# -mediatek name and drop the blob line from proprietary-files.txt.
+# NB: the MTK android.hardware.audio.core AIDL HALs (stock fragment
+# android.hardware.audio.service-aidl.xml, whose name collides with
+# hardware/interfaces/audio/aidl/default) are merged in via a second
+# DEVICE_MANIFEST_FILE entry in BoardConfig.mk - the build rejects VINTF xml
+# in PRODUCT_COPY_FILES.
 
 # -----------------------------------------------------------------------------
 # Feature permissions

@@ -291,7 +291,15 @@ BOOT_SECURITY_PATCH := 2026-08-01
 # -----------------------------------------------------------------------------
 # VINTF
 # -----------------------------------------------------------------------------
-DEVICE_MANIFEST_FILE := $(CONFIGS_PATH)/vintf/manifest.xml
+# manifest.xml = verbatim stock. manifest_audio_aidl.xml carries the
+# android.hardware.audio.core AIDL HALs that the stock ships in a separate
+# fragment (android.hardware.audio.service-aidl.xml) - that filename collides
+# with hardware/interfaces/audio/aidl/default's prebuilt_etc, and the build
+# forbids VINTF xml in PRODUCT_COPY_FILES, so merge it in as a second
+# DEVICE_MANIFEST_FILE input instead.
+DEVICE_MANIFEST_FILE := \
+    $(CONFIGS_PATH)/vintf/manifest.xml \
+    $(CONFIGS_PATH)/vintf/manifest_audio_aidl.xml
 # No DEVICE_MATRIX_FILE: the stock device compatibility_matrix.xml requires the
 # MediaTek framework extensions (vendor.mediatek.framework.mtksf_ext,
 # vendor.mediatek.hardware.mbrainj) that only exist when the mediatek-common

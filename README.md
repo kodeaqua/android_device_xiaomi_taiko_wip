@@ -151,9 +151,10 @@ name. Fixed:
 
 - **audio core AIDL vintf** (`android.hardware.audio.service-aidl.xml`): needed
   for `android.hardware.audio.core/IModule` registration, but the name is taken
-  by `audio/aidl/default`. VINTF dir-scans `manifest/*.xml`, so ship the same
-  content from the tree via `PRODUCT_COPY_FILES` (no module) as
-  `...service-aidl.mediatek.xml`.
+  by `audio/aidl/default`. Merge the 4 `<hal>` entries in as a second
+  `DEVICE_MANIFEST_FILE` (`configs/vintf/manifest_audio_aidl.xml`) - the build
+  rejects VINTF xml in `PRODUCT_COPY_FILES` ("VINTF metadata found in
+  PRODUCT_COPY_FILES ... use DEVICE_MANIFEST_FILE / ... / vintf_fragments").
 - **health** (`android.hardware.health-service.example` bin/rc/xml +
   `filterPowerSupplyEvents.o`): drop blobs, `PRODUCT_PACKAGES +=
   android.hardware.health-service.example` (source). `filterPowerSupplyEvents.o`
