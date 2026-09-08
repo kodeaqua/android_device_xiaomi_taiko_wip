@@ -417,7 +417,6 @@ vendor/lib/libudf.so
 vendor/lib/vendor.mediatek.hardware.pq_aidl-V7-ndk.so
 vendor/lib64/mt6789/gc05a2_truly_front_mipi_raw_IdxMgr.so
 vendor/lib64/mt6789/gc08a8_truly_main_mipi_raw_IdxMgr.so
-vendor/lib64/mt6789/libfeatureiodrv_mem.so
 vendor/lib64/mt6789/libmml.so
 vendor/lib64/mt6789/libpq_sec.so
 vendor/lib64/hq_algoutils.so
@@ -1833,7 +1832,6 @@ vendor/lib64/libpqcustutils.so
 vendor/lib64/libremosaic_wrapper.so
 vendor/lib64/libremosaiclib.so
 vendor/lib64/librt_extamp_intf.so
-vendor/lib64/libsatpro_tap.so
 vendor/lib64/libsimlock.so
 vendor/lib64/libsimmelock.so
 vendor/lib64/libsixth.so
@@ -1847,7 +1845,6 @@ vendor/lib64/libtida_mitee.so
 vendor/lib64/libtranslator_mapi_v3.0.so
 vendor/lib64/libtranslator_mdmi_v2.8.2.so
 vendor/lib64/libtranslator_utils.so
-vendor/lib64/libultrahdr_mtk.so
 vendor/lib64/libvcodec_oal.so
 vendor/lib64/libvcodecdrv_header_stub.so
 vendor/lib64/libvgoservice.so
