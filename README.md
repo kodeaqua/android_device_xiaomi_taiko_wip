@@ -111,6 +111,25 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 4 — proprietary-files.txt (extract-files.py failures)
+
+First `./extract-files.py` run on the build machine exited with 53 "file not
+found" lines. Fixed:
+- **bare `lib/` `lib64/` `etc/` entries** (no partition prefix): these files
+  live on the AOSP-built `system` partition. `libstagefright_*`,
+  `libmedia_codeclist_*`, `graphicbuffersource-aidl-ndk`,
+  `libaconfig_storage_read_api_cc` are built from source by LineageOS → removed.
+  `libdolby*` / `audio_effects.*` / `mediacodec.policy` are optional → removed
+  (re-add as `system/lib*/…` if Dolby Atmos is wanted).
+- **`vendor/odm/…` entries**: wrong form. odm is folded into `/vendor/odm`
+  (`TARGET_COPY_OUT_ODM := vendor/odm`), so the correct extract-utils prefix is
+  `odm/…` (already in the file). The 7 unique `vendor/odm/etc/selinux/*`
+  (precompiled `odm_sepolicy.cil` etc.) were dropped — policy is built from
+  source, never shipped precompiled.
+
+Re-run `./extract-files.py <path-to-OTA.zip>`; expect a second pass of
+`check_elf` fixups (add to `blob_fixups` in `extract-files.py`).
+
 ### Round 3 — kernel VINTF / OTA / DTO / fstab
 
 - `PRODUCT_OTA_ENFORCE_VINTF_KERNEL_REQUIREMENTS := false` added. `PRODUCT_SHIPPING_API_LEVEL := 36`

@@ -11,6 +11,16 @@
 #      android.hardware.thermal-service.mediatek (+ their .rc / vintf .xml).
 #    Soong registers every module in the tree, so keeping both = "multiple
 #    modules named ..." hard error.
+#  - removed 53 lines extract-files.py could not resolve:
+#      * bare "lib/ lib64/ etc/" (no partition prefix) -> those files live on
+#        the AOSP-built `system` partition; libstagefright_* / libmedia_codeclist_*
+#        / graphicbuffersource-aidl-ndk / libaconfig_storage_read_api_cc are
+#        built from source by LineageOS, and libdolby* / audio_effects.* /
+#        mediacodec.policy are optional (re-add as system/lib*/... if wanted).
+#      * "vendor/odm/..." -> wrong form; odm is folded into /vendor/odm, so the
+#        correct prefix is "odm/..." (already present). The odm precompiled
+#        sepolicy (odm_sepolicy.cil etc.) is intentionally NOT shipped - policy
+#        is built from source.
 
 # Audio
 system_ext/bin/hw/android.hardware.audio.parameter_parser.service
@@ -141,8 +151,6 @@ vendor/lib64/libspatializerparamstorage.so
 vendor/lib64/libvibratorutils.so
 
 # Audio configs
-etc/audio_effects.conf
-etc/audio_effects.xml
 system_ext/etc/a2dp_audio_policy_configuration.xml
 system_ext/etc/a2dp_in_audio_policy_configuration.xml
 system_ext/etc/audio_policy_configuration.xml
@@ -1568,27 +1576,6 @@ vendor/lib/hw/local_time.default.so
 vendor/lib64/hw/local_time.default.so
 
 # Media
-etc/seccomp_policy/mediacodec.policy
-lib/graphicbuffersource-aidl-ndk.so
-lib/libaconfig_storage_read_api_cc.so
-lib/libmedia_codeclist.so
-lib/libmedia_codeclist_capabilities.so
-lib/libstagefright_aidl_bufferpool2.so
-lib/libstagefright_bufferpool@2.0.1.so
-lib/libstagefright_codecbase.so
-lib/libstagefright_framecapture_utils.so
-lib/libstagefright_graphicbuffersource_aidl.so
-lib/libstagefright_surface_utils.so
-lib64/graphicbuffersource-aidl-ndk.so
-lib64/libaconfig_storage_read_api_cc.so
-lib64/libmedia_codeclist.so
-lib64/libmedia_codeclist_capabilities.so
-lib64/libstagefright_aidl_bufferpool2.so
-lib64/libstagefright_bufferpool@2.0.1.so
-lib64/libstagefright_codecbase.so
-lib64/libstagefright_framecapture_utils.so
-lib64/libstagefright_graphicbuffersource_aidl.so
-lib64/libstagefright_surface_utils.so
 system_ext/lib/libged_sys.so
 system_ext/lib/libgralloc_extra_sys.so
 system_ext/lib/libsf_cpupolicy.so
@@ -1643,10 +1630,6 @@ vendor/lib64/libstagefright_aidl_bufferpool2.so
 vendor/lib64/libstagefright_bufferpool@2.0.1.so
 
 # Media (Dolby)
-lib/libdolbyproxyandroid.so
-lib/libdolbyui.so
-lib64/libdolbyproxyandroid.so
-lib64/libdolbyui.so
 system_ext/lib/libdolbyeffect.so
 system_ext/lib64/libacse.so
 system_ext/lib64/libdolbyacse_jni.so
@@ -3013,32 +2996,6 @@ vendor/mitee/ta/8aaaf201-2460-0000-7143fe4f7c823c80.ta
 vendor/mitee/ta/dba51a17-0563-11e7-93b16fa7b0071a51.ta
 vendor/mitee/ta/e5140b33-76fa-4c63-ab18062caab2fb5c.ta
 vendor/mitee/ta/e97c270e-a5c4-4c58-bcd3384a2fa2539e.ta
-vendor/odm/bin/toucheventcheck
-vendor/odm/etc/camera/cameraopt_reclaim.json
-vendor/odm/etc/selinux/odm_file_contexts
-vendor/odm/etc/selinux/odm_hwservice_contexts
-vendor/odm/etc/selinux/odm_mac_permissions.xml
-vendor/odm/etc/selinux/odm_property_contexts
-vendor/odm/etc/selinux/odm_seapp_contexts
-vendor/odm/etc/selinux/odm_sepolicy.cil
-vendor/odm/etc/selinux/odm_service_contexts
-vendor/odm/etc/vintf/manifest_dsds.xml
-vendor/odm/etc/vintf/manifest_qsqs.xml
-vendor/odm/etc/vintf/manifest_ss.xml
-vendor/odm/etc/vintf/manifest_tsts.xml
-vendor/odm/etc/build_taiko_cn.prop
-vendor/odm/etc/build_taiko_cn_condor.prop
-vendor/odm/etc/build_taiko_cn_kid.prop
-vendor/odm/etc/build_taiko_eea.prop
-vendor/odm/etc/build_taiko_eea_kid.prop
-vendor/odm/etc/build_taiko_gl.prop
-vendor/odm/etc/build_taiko_gl_kidsar.prop
-vendor/odm/etc/build_taiko_gl_nonsar.prop
-vendor/odm/etc/build_taiko_in.prop
-vendor/odm/etc/device_info_qr_config.yml
-vendor/odm/etc/init.panel_info.sh
-vendor/odm/etc/mimdconfig.json
-vendor/odm/etc/setting.xml
 vendor/res/images/lcd_test_00.png
 vendor/res/images/lcd_test_01.png
 vendor/res/images/lcd_test_02.png
