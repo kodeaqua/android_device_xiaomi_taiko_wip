@@ -84,6 +84,8 @@ BOARD_KERNEL_PAGESIZE := 4096
 
 TARGET_NO_KERNEL := true
 BOARD_PREBUILT_BOOTIMAGE := $(PREBUILT_PATH)/boot.img
+# (PRODUCT_OTA_ENFORCE_VINTF_KERNEL_REQUIREMENTS := false is set in device.mk -
+#  no $(PRODUCT_OUT)/kernel for check_vintf to match the FCM <kernel> section.)
 
 # dtbo is its own physical partition, supplied as a stock prebuilt (no source
 # to regenerate the overlays). BOARD_KERNEL_SEPARATED_DTBO is intentionally NOT

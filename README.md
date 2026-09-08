@@ -111,6 +111,24 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 3 — kernel VINTF / OTA / DTO / fstab
+
+- `PRODUCT_OTA_ENFORCE_VINTF_KERNEL_REQUIREMENTS := false` added. `PRODUCT_SHIPPING_API_LEVEL := 36`
+  auto-enables strict `check_vintf`, but `TARGET_NO_KERNEL` means there is no
+  `$(PRODUCT_OUT)/kernel` for it to match the FCM `<kernel>` section (version +
+  `CONFIG_*`) against — the check has no input and would error. The stock GKI
+  kernel satisfies android16-6.12 by definition.
+- `AB_OTA_POSTINSTALL_CONFIG` — added the `vendor` / `checkpoint_gc` entry
+  (was `system` / dexopt only); standard for Virtual A/B F2FS checkpoint GC.
+- DTO: reusing **stock `dtbo.img` + stock vendor_boot DTB** as prebuilts is the
+  lowest-risk overlay setup — base and overlays are guaranteed to match. No
+  `BOARD_DTBO_CFG` (not building dtbo from source); `BOARD_INCLUDE_DTB_IN_BOOTIMG`
+  empty (DTB lives in vendor_boot). Verified OK.
+- fstab checked against the stock `vendor/etc/fstab.mt6789`: `/data` f2fs flags
+  match stock (+ `fscompress`, paired with `PRODUCT_FS_COMPRESSION := 1`);
+  `/metadata` carries an extra `data=journal,commit=1` (yunluo hardening, kept);
+  metadata-encryption / checkpoint / fileencryption / fsverity all match.
+
 ### Round 2 — VINTF / SELinux
 
 - `configs/vintf/manifest.xml` replaced with the **stock** device manifest

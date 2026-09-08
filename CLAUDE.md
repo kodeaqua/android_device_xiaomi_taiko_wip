@@ -55,6 +55,12 @@ seeded from is `lineage-23.0` — see "LineageOS 23.2 deltas" below.
   `BOARD_<group>_SIZE ≈ BOARD_SUPER_PARTITION_SIZE`, never `/2`.
 - All `.ko` are prebuilt and KMI-locked to stock GKI `6.12.30-android16-5`. If
   you swap the kernel/GKI build, re-extract every module set.
+- `PRODUCT_OTA_ENFORCE_VINTF_KERNEL_REQUIREMENTS := false` (device.mk) — mandatory
+  with `TARGET_NO_KERNEL`: no `$(PRODUCT_OUT)/kernel` ⇒ `check_vintf` (strict at
+  API 36) has nothing to match the FCM `<kernel>` section against. Do NOT drop
+  this unless you switch to a repacked boot.img that ships `:kernel`.
+- DTO: stock `dtbo.img` + stock vendor_boot `dtb/` reused as prebuilts (base and
+  overlays guaranteed to match). No `BOARD_DTBO_CFG` / `BOARD_KERNEL_SEPARATED_DTBO`.
 
 ## Kernel module wiring
 

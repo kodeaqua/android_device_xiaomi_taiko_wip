@@ -68,6 +68,12 @@ AB_OTA_POSTINSTALL_CONFIG += \
     FILESYSTEM_TYPE_system=$(BOARD_SYSTEMIMAGE_FILE_SYSTEM_TYPE) \
     POSTINSTALL_OPTIONAL_system=true
 
+AB_OTA_POSTINSTALL_CONFIG += \
+    RUN_POSTINSTALL_vendor=true \
+    POSTINSTALL_PATH_vendor=bin/checkpoint_gc \
+    FILESYSTEM_TYPE_vendor=$(BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE) \
+    POSTINSTALL_OPTIONAL_vendor=true
+
 PRODUCT_USE_DYNAMIC_PARTITIONS := true
 $(call inherit-product, $(SRC_TARGET_DIR)/product/virtual_ab_ota/launch_with_vendor_ramdisk.mk)
 
@@ -77,6 +83,14 @@ $(call inherit-product, $(SRC_TARGET_DIR)/product/virtual_ab_ota/launch_with_ven
 PRODUCT_CHARACTERISTICS := tablet
 PRODUCT_SHIPPING_API_LEVEL := 36
 PRODUCT_ENABLE_UFFD_GC := true
+
+# Prebuilt boot.img + TARGET_NO_KERNEL -> no $(PRODUCT_OUT)/kernel, so check_vintf
+# has nothing to match the framework compatibility matrix <kernel> requirements
+# (version + CONFIG_* fragments) against. The stock GKI kernel already satisfies
+# the android16-6.12 KMI; relax the OTA-time kernel-requirements assert instead
+# of failing on a check with no input. prebuilt/kernel.lz4 keeps the stock Image
+# for a future switch to a repacked boot.img where check_vintf can run for real.
+PRODUCT_OTA_ENFORCE_VINTF_KERNEL_REQUIREMENTS := false
 
 # -----------------------------------------------------------------------------
 # fastbootd (AOSP) + preloader helpers
