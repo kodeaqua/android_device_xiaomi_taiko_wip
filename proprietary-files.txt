@@ -1661,11 +1661,6 @@ vendor/lib64/APUWareUtilsAidlServer.so
 vendor/lib64/AVCSecureVdecCA.so
 vendor/lib64/HEVCSecureVdecCA.so
 vendor/lib64/VP9SecureVdecCA.so
-vendor/lib64/com.xiaomi.plugin.memcpy.so
-vendor/lib64/com.xiaomi.plugin.morphohdr.so
-vendor/lib64/com.xiaomi.plugin.skinbeautifier.so
-vendor/lib64/com.xiaomi.plugin.superlowlight.so
-vendor/lib64/com.xiaomi.plugin.swflip.so
 vendor/lib64/libAVCSecureVencCA.so
 vendor/lib64/libBasicModule.so
 vendor/lib64/libFaceUnlock.so
