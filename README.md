@@ -525,8 +525,9 @@ Still open: see TODO.
       if recovery misbehaves.
 - [ ] Trim HyperOS-only `persist.miui.*` / `persist.sys.stability.*` from
       `configs/props/product.prop` once the device boots.
-- [ ] Decide `mi_ext` fate — kept mountable+nofail in fstab; a pure-AOSP build
-      ships no mi_ext image.
+- [x] `mi_ext` fate — resolved: not in any `BOARD_*_PARTITION_LIST` (the build
+      never creates the logical partition) and the fstab entry is `nofail`
+      +`logical`, so a Lineage build that ships no mi_ext just skips the mount.
 - [~] `overlay/` + `overlay-lineage/` — `power_profile.xml` battery.capacity set
       to 9000 (Redmi Pad 2 spec; no full power curve in the dump so the yunluo
       per-component numbers stand). `config_defaultPeakRefreshRate` = 90 already
