@@ -119,6 +119,8 @@ PRODUCT_PACKAGES += \
     wlan_assistant \
     libwifi-hal-wrapper \
     android.hardware.wifi-service \
+    wpa_supplicant \
+    hostapd \
     vendor.mediatek.hardware.mtkpower@1.2 \
     android.hardware.memtrack-service.mediatek \
     android.hardware.thermal-service.mediatek \
