@@ -111,6 +111,17 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 22 — stock fstab blobs vs our rootdir fstab
+
+`device.mk` installs `rootdir/etc/fstab.mt6789` to `vendor/etc/fstab.mt6789` and
+`rootdir/Android.bp` names its module `fstab.mt6789` - so the stock
+`vendor/etc/fstab.mt6789` blob is both a module-name and an install-path clash,
+and it would overwrite our erofs+ext4 / Lineage-recovery fstab with HyperOS's.
+Dropped `vendor/etc/fstab.{mt6789,emmc,enableswap}` from `proprietary-files.txt`
+(LineageOS init only ever reads `fstab.$(ro.hardware)` = `fstab.mt6789`; the
+`by-name` paths in our fstab resolve on both the eMMC `11230000.msdc` and UFS
+SKUs).
+
 ### Round 21 — build-generated aconfig / release-flag files
 
 `Makefile:148: error: overriding commands for target

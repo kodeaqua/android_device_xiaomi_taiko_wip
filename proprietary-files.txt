@@ -1239,9 +1239,6 @@ vendor/etc/ecc_list_OP18.xml
 vendor/etc/ecc_list_OP236.xml
 vendor/etc/ecc_list_preference.xml
 vendor/etc/factory.ini
-vendor/etc/fstab.emmc
-vendor/etc/fstab.enableswap
-vendor/etc/fstab.mt6789
 vendor/etc/fstb.cfg
 vendor/etc/init.insmod.mt6789.cfg
 vendor/etc/init.insmod.touch.cfg
