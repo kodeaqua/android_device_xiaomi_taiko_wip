@@ -120,6 +120,38 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 28 — `prefer: true` blob shadowing the source `libwifi-hal`
+
+`hardware/interfaces/wifi/aidl/default/wifi_legacy_hal.h:20:10: fatal error:
+'hardware_legacy/wifi_hal.h' file not found` while compiling
+`android.hardware.wifi-service-lib` (`aidl_struct_util.o`).
+
+Commit 4277d60 switched the wifi HAL to the source `android.hardware.wifi-service`
+(V4) + source `libwifi-hal` (`frameworks/opt/net/wifi/libwifi_hal`), which
+re-exports `wifi_legacy_headers` (→ `hardware_legacy/wifi_hal.h`). But
+`proprietary-files.txt` still listed `vendor/lib64/libwifi-hal.so` — HyperOS's
+verbatim copy of that same AOSP lib. `extract-utils` emits every generated
+prebuilt with `prefer: true`, and Soong's prebuilt/source mutator lets a
+`prefer: true` prebuilt replace the same-named source module **globally, across
+namespaces**. So `android.hardware.wifi-service-lib` linked the bare prebuilt,
+which carries no `export_include_dirs` and no `wifi_legacy_headers` re-export —
+verified from the ninja `cFlags1`: neither
+`-Iframeworks/opt/net/wifi/libwifi_hal/include` nor
+`-Ihardware/interfaces/wifi/legacy_headers/include` was on the compile line
+(while `libwifi-system-iface`'s exported include *was*).
+
+Dropped `vendor/lib64/libwifi-hal.so`. Dropped
+`vendor/lib64/libkeystore-engine-wifi-hidl.so` in the same pass — identical
+class (a `vendor_available` source module of the same name in
+`system/security/keystore-engine`, already built as a vendor variant, silently
+`prefer`-overridden by the blob). Both source modules build fine.
+`./setup-makefiles.py` regenerated `vendor/xiaomi/taiko/Android.bp`.
+
+Lesson: a blob whose basename equals a source `cc_library` name does **not**
+always hard-error with "multiple modules named" — with `prefer: true` it wins
+silently and you only find out when its missing `export_*` breaks a consumer.
+Same fix class as Rounds 8-14 (HyperOS ships AOSP-built libs as `/vendor` blobs).
+
 ### Round 27 — duplicate genfscon entries vs the MediaTek base
 
 `device/xiaomi/taiko/sepolicy/vendor/genfs_contexts:7:ERROR 'duplicate entry for

@@ -964,8 +964,6 @@ vendor/etc/vintf/manifest/android.hardware.usb.gadget-aidl-service.mediatek.xml
 vendor/bin/wmt_launcher
 vendor/bin/wmt_loader
 vendor/etc/init/init.wlan_drv.rc
-vendor/lib64/libkeystore-engine-wifi-hidl.so
-vendor/lib64/libwifi-hal.so
 
 # Wi-Fi configs
 vendor/etc/wifi/p2p_supplicant_overlay.conf
