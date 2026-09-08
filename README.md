@@ -111,6 +111,15 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 9 — more "partition is different" (hw/mediatek interface libs)
+
+`vendor.mediatek.hardware.audio-V1-ndk` (built by `hardware/mediatek/interfaces/
+hardware/audio/aidl`) and `libbinderdebug` (AOSP) collided with vendor prebuilts.
+Removed `vendor.mediatek.hardware.audio-V1-ndk.so`, `...audio@6.1.so` (dead HIDL
+audio), `libbinderdebug.so`. Kept `...audio-impl.so` (the real HAL impl).
+`hardware/mediatek` only defines 63 soong modules — cross-checked the blob list
+against them; only these hit.
+
 ### Round 8 — "partition is different" (AOSP libs listed as vendor blobs)
 
 `module "libgrallocusage" ... partition is different: system(libgrallocusage) !=

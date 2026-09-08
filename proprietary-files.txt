@@ -50,7 +50,6 @@ vendor/lib/libmediautils_vendor.so
 vendor/lib/libmisight.so
 vendor/lib/libtinyalsav2.so
 vendor/lib/server_configurable_flags.so
-vendor/lib/vendor.mediatek.hardware.audio-V1-ndk.so
 vendor/lib64/hw/audio.primary.default.so
 vendor/lib64/hw/audio.primary.mediatek.so
 vendor/lib64/hw/audio.primary.mt6789.so
@@ -72,7 +71,6 @@ vendor/lib64/libmediautils_vendor.so
 vendor/lib64/libmisight.so
 vendor/lib64/libtinyalsav2.so
 vendor/lib64/server_configurable_flags.so
-vendor/lib64/vendor.mediatek.hardware.audio-V1-ndk.so
 
 # Audio (FX modules)
 vendor/lib/soundfx/libaecsw.so
@@ -327,7 +325,6 @@ vendor/lib/hw/vendor.mediatek.hardware.bluetooth.audio@2.2-impl.so
 vendor/lib/libbluetooth_audio_session.so
 vendor/lib/libbluetooth_audio_session_aidl.so
 vendor/lib/libbluetooth_audio_session_mediatek.so
-vendor/lib/vendor.mediatek.hardware.audio@6.1.so
 vendor/lib/vendor.mediatek.hardware.bluetooth.audio-V1-ndk.so
 vendor/lib/vendor.mediatek.hardware.bluetooth.audio@2.1.so
 vendor/lib/vendor.mediatek.hardware.bluetooth.audio@2.2.so
@@ -339,7 +336,6 @@ vendor/lib64/hw/vendor.mediatek.hardware.bluetooth.audio@2.2-impl.so
 vendor/lib64/libbluetooth_audio_session.so
 vendor/lib64/libbluetooth_audio_session_aidl.so
 vendor/lib64/libbluetooth_audio_session_mediatek.so
-vendor/lib64/vendor.mediatek.hardware.audio@6.1.so
 vendor/lib64/vendor.mediatek.hardware.bluetooth.audio-V1-ndk.so
 vendor/lib64/vendor.mediatek.hardware.bluetooth.audio@2.1.so
 vendor/lib64/vendor.mediatek.hardware.bluetooth.audio@2.2.so
@@ -2201,7 +2197,6 @@ vendor/lib64/libaudioprimarydevicehalifclient.so
 vendor/lib64/libaudiosmartpamtk.so
 vendor/lib64/libaurisysdemo.so
 vendor/lib64/libbessound_hd_mtk_vendor.so
-vendor/lib64/libbinderdebug.so
 vendor/lib64/libblisrc32_vendor.so
 vendor/lib64/libbluetooth_hw_test.so
 vendor/lib64/libbluetooth_mtk_pure.so
