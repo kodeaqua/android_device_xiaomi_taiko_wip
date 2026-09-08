@@ -111,6 +111,15 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 6 — missing dependency repos
+
+`soong_namespace ... namespace hardware/lineage/compat does not exist`.
+Added `lineage.dependencies` so `breakfast` auto-syncs the four deps:
+`hardware/mediatek`, `device/mediatek/sepolicy_vndr`, `hardware/xiaomi`,
+`hardware/lineage/compat` (all `lineage-23.2`). Dropped the unused
+`hardware/google/pixel` soong namespace (pixel-libperfmgr was dropped in
+round 2).
+
 ### Round 5 — soong "module already defined" (proprietary-files dupes)
 
 `vendor/xiaomi/taiko/Android.bp` had ~300 `prebuilt_* already defined` errors.
