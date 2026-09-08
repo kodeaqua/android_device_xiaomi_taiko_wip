@@ -111,14 +111,21 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
-### Round 6 — missing dependency repos
+### Round 6 — soong namespace / dependency repos
 
-`soong_namespace ... namespace hardware/lineage/compat does not exist`.
-Added `lineage.dependencies` so `breakfast` auto-syncs the four deps:
-`hardware/mediatek`, `device/mediatek/sepolicy_vndr`, `hardware/xiaomi`,
-`hardware/lineage/compat` (all `lineage-23.2`). Dropped the unused
-`hardware/google/pixel` soong namespace (pixel-libperfmgr was dropped in
-round 2).
+`vendor/xiaomi/taiko/Android.bp:5: namespace hardware/lineage/compat does not exist`.
+- On lineage-23.2 **`hardware/lineage/compat` has no `soong_namespace {}`**
+  (flat modules in the default namespace) — it must NOT be in
+  `extract-files.py` `namespace_imports`. Removed it; the `*_shim` libs are
+  still usable by plain name in `blob_fixups`. (`hardware/mediatek`,
+  `hardware/mediatek/libmtkperf_client`, `hardware/xiaomi` DO declare
+  namespaces — kept.)
+- Added `lineage.dependencies` for the real device deps (`hardware/mediatek`,
+  `device/mediatek/sepolicy_vndr`, `hardware/xiaomi`). `hardware/lineage/compat`
+  is in the LineageOS base manifest already — don't list it (roomservice would
+  write a duplicate project).
+- Dropped the unused `hardware/google/pixel` soong namespace (pixel-libperfmgr
+  was dropped in round 2).
 
 ### Round 5 — soong "module already defined" (proprietary-files dupes)
 

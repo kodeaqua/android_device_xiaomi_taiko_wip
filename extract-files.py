@@ -30,8 +30,12 @@ namespace_imports = [
     "hardware/mediatek",
     "hardware/mediatek/libmtkperf_client",
     "hardware/xiaomi",
-    "hardware/lineage/compat",
 ]
+# NB: hardware/lineage/compat is NOT a soong namespace on lineage-23.2 (its
+# Android.bp has no `soong_namespace {}` - the shim libs live in the default
+# namespace). Importing it here fails soong bootstrap with
+# "namespace hardware/lineage/compat does not exist". The *_shim libs are still
+# usable directly by name in blob_fixups (.add_needed("libbase_shim.so") etc.).
 
 lib_fixups: lib_fixups_user_type = {
     libs_clang_rt_ubsan: lib_fixup_remove_arch_suffix,
