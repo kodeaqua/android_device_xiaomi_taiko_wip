@@ -74,11 +74,9 @@ vendor/lib/soundfx/libbundleaidl.so
 vendor/lib/soundfx/libdlbvolaidl.so
 vendor/lib/soundfx/libdownmixaidl.so
 vendor/lib/soundfx/libdynamicsprocessingaidl.so
-vendor/lib/soundfx/libdynproc.so
 vendor/lib/soundfx/libenvreverbsw.so
 vendor/lib/soundfx/libequalizersw.so
 vendor/lib/soundfx/libextensioneffect.so
-vendor/lib/soundfx/libhapticgenerator.so
 vendor/lib/soundfx/libhapticgeneratoraidl.so
 vendor/lib/soundfx/libloudnessenhanceraidl.so
 vendor/lib/soundfx/libmisoundfx_aidl.so
@@ -110,11 +108,9 @@ vendor/lib64/soundfx/libbundleaidl.so
 vendor/lib64/soundfx/libdlbvolaidl.so
 vendor/lib64/soundfx/libdownmixaidl.so
 vendor/lib64/soundfx/libdynamicsprocessingaidl.so
-vendor/lib64/soundfx/libdynproc.so
 vendor/lib64/soundfx/libenvreverbsw.so
 vendor/lib64/soundfx/libequalizersw.so
 vendor/lib64/soundfx/libextensioneffect.so
-vendor/lib64/soundfx/libhapticgenerator.so
 vendor/lib64/soundfx/libhapticgeneratoraidl.so
 vendor/lib64/soundfx/libloudnessenhanceraidl.so
 vendor/lib64/soundfx/libmisoundfx_aidl.so
