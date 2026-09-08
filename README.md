@@ -111,6 +111,37 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 18 — kati "MODULE ... already defined" (stock ships AOSP reference impls)
+
+Past soong bootstrap now; kati fails
+`vendor/xiaomi/taiko: MODULE.TARGET.ETC.android.hardware.audio.service-aidl.xml
+already defined by hardware/interfaces/audio/aidl/default`. HyperOS ships several
+`hardware/interfaces` reference implementations **verbatim as blobs** (their file
+headers literally say `Input: hardware/interfaces/...`), and `extract-utils`
+registers each as a module that collides with the AOSP source module of the same
+name. Fixed:
+
+- **audio core AIDL vintf** (`android.hardware.audio.service-aidl.xml`): needed
+  for `android.hardware.audio.core/IModule` registration, but the name is taken
+  by `audio/aidl/default`. VINTF dir-scans `manifest/*.xml`, so ship the same
+  content from the tree via `PRODUCT_COPY_FILES` (no module) as
+  `...service-aidl.mediatek.xml`.
+- **health** (`android.hardware.health-service.example` bin/rc/xml +
+  `filterPowerSupplyEvents.o`): drop blobs, `PRODUCT_PACKAGES +=
+  android.hardware.health-service.example` (source). `filterPowerSupplyEvents.o`
+  is force-added by `base_vendor.mk` so the blob always collided.
+- **sensors** (`android.hardware.sensors-service.multihal` bin/rc/xml): drop
+  blobs, `PRODUCT_PACKAGES += android.hardware.sensors-service.multihal`
+  (source). Added the real primary sub-HAL blob
+  `android.hardware.sensors@2.X-subhal-mediatek.so` (aospdtgen missed it) and
+  dropped the stale yunluo `configs/hals.conf` copy from `device.mk` - the stock
+  `/vendor/etc/sensors/hals.conf` blob (subhal-mediatek + sensors.camera.light)
+  is the correct one.
+
+`audio_effects_config.xml` also shares a name with `audio/aidl/default` but that
+module is `enabled: false` unless `use_default_audio_effects_config` soong var is
+set, so the MTK blob stands.
+
 ### Round 17 — camera re-enabled (MTK ISP6s + MiCam)
 
 Camera was dropped in the Path-A batches (81cffce et al) on the belief that

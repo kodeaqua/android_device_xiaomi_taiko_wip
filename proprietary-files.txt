@@ -34,7 +34,6 @@ vendor/lib64/hw/android.hardware.audio.effect.aidl-impl-mediatek.so
 vendor/bin/hw/android.hardware.audio.service-aidl.mediatek
 vendor/etc/init/android.hardware.audio.service-aidl.mediatek.rc
 vendor/etc/vintf/manifest/android.hardware.audio.effect.service-aidl.xml
-vendor/etc/vintf/manifest/android.hardware.audio.service-aidl.xml
 vendor/lib/hw/vendor.mediatek.hardware.audio-impl.so
 vendor/lib/libaudiotoolkit_vendor.so
 vendor/lib/libbluetooth_audio_session_aidl_mtk.so
@@ -693,13 +692,10 @@ vendor/etc/init/android.hardware.gatekeeper-service.mitee.rc
 vendor/etc/vintf/manifest/android.hardware.gatekeeper-service.mitee.xml
 
 # Health
-vendor/bin/hw/android.hardware.health-service.example
 vendor/bin/hw/vendor.xiaomi.hardware.micharge-service
 vendor/bin/fuelgauged
-vendor/etc/init/android.hardware.health-service.example.rc
 vendor/etc/init/fuelgauged_init.rc
 vendor/etc/init/vendor.xiaomi.hardware.micharge-service.rc
-vendor/etc/vintf/manifest/android.hardware.health-service.example.xml
 vendor/etc/vintf/manifest/vendor.xiaomi.hardware.micharge.xml
 vendor/lib64/vendor.xiaomi.hardware.micharge-V2-ndk.so
 
@@ -913,13 +909,11 @@ vendor/etc/vintf/manifest/android.hardware.security.secureclock-service.mitee.xm
 vendor/etc/vintf/manifest/android.hardware.security.sharedsecret-service.mitee.xml
 
 # Sensors
-vendor/bin/hw/android.hardware.sensors-service.multihal
-vendor/etc/init/android.hardware.sensors-service-multihal.rc
-vendor/etc/vintf/manifest/android.hardware.sensors-multihal.xml
 vendor/lib/hw/sensors.dynamic_sensor_hal.so
 vendor/lib/libhidparser.so
 vendor/lib/sensors.camera.light.so
 vendor/lib64/hw/sensors.dynamic_sensor_hal.so
+vendor/lib64/hw/android.hardware.sensors@2.X-subhal-mediatek.so
 vendor/lib64/hw/sensors.mediatek.V2.0.so
 vendor/lib64/hw/sensors.mt6789.so
 vendor/lib64/libhfmanager.so
@@ -1122,7 +1116,6 @@ vendor/etc/aidl/le_audio/aidl_default_audio_set_configurations.json_mtk
 vendor/etc/aidl/le_audio/aidl_default_audio_set_scenarios.json
 vendor/etc/apdb/APDB_MT6789___W2532
 vendor/etc/apdb/APDB_MT6789___W2532_ENUM
-vendor/etc/bpf/filterPowerSupplyEvents.o
 vendor/etc/gralloc/cam.xml
 vendor/etc/gralloc/dpu.xml
 vendor/etc/gralloc/dpu_aeu.xml

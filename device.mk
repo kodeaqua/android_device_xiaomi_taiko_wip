@@ -153,13 +153,28 @@ $(call soong_config_set,mediatek_gadget,use_custom_usb_gadget_rc,true)
 # stock libpowerhal.so blob.
 
 # -----------------------------------------------------------------------------
-# LineageOS Health (charging control) - separate from the stock health blob
+# Health
 # -----------------------------------------------------------------------------
+# The stock image ships hardware/interfaces' own AIDL reference health service
+# (android.hardware.health-service.example) + BPF (filterPowerSupplyEvents.o)
+# verbatim as blobs -> "MODULE ... already defined" against the AOSP source
+# (filterPowerSupplyEvents.o is force-added by build/.../base_vendor.mk).
+# Drop the blobs, build the reference service from source, and add LineageOS'
+# charging-control service alongside it.
 PRODUCT_PACKAGES += \
+    android.hardware.health-service.example \
     vendor.lineage.health-service.default
 $(call soong_config_set,lineage_health,charging_control_charging_path,/sys/class/power_supply/battery/input_suspend)
 $(call soong_config_set,lineage_health,charging_control_charging_enabled,0)
 $(call soong_config_set,lineage_health,charging_control_charging_disabled,1)
+
+# -----------------------------------------------------------------------------
+# Sensors - AOSP multi-HAL (same story: stock ships the hardware/interfaces
+# reference binary + rc + vintf verbatim as blobs). Build from source; the MTK
+# sub-HALs load via the stock /vendor/etc/sensors/hals.conf blob.
+# -----------------------------------------------------------------------------
+PRODUCT_PACKAGES += \
+    android.hardware.sensors-service.multihal
 
 # -----------------------------------------------------------------------------
 # Power off alarm
@@ -228,8 +243,16 @@ PRODUCT_COPY_FILES += \
     $(call find-copy-subdir-files,*,$(LOCAL_PATH)/configs/media/,$(TARGET_COPY_OUT_VENDOR)/etc) \
     $(call find-copy-subdir-files,*,$(LOCAL_PATH)/configs/seccomp/,$(TARGET_COPY_OUT_VENDOR)/etc/seccomp_policy) \
     $(call find-copy-subdir-files,*,$(LOCAL_PATH)/configs/wifi/,$(TARGET_COPY_OUT_VENDOR)/etc/wifi) \
-    $(LOCAL_PATH)/configs/hals.conf:$(TARGET_COPY_OUT_VENDOR)/etc/sensors/hals.conf \
-    $(LOCAL_PATH)/configs/thermal_info_config.json:$(TARGET_COPY_OUT_VENDOR)/etc/thermal_info_config.json
+    $(LOCAL_PATH)/configs/thermal_info_config.json:$(TARGET_COPY_OUT_VENDOR)/etc/thermal_info_config.json \
+    $(LOCAL_PATH)/configs/vintf/manifest/android.hardware.audio.service-aidl.mediatek.xml:$(TARGET_COPY_OUT_VENDOR)/etc/vintf/manifest/android.hardware.audio.service-aidl.mediatek.xml
+
+# The MTK audio-core AIDL VINTF fragment ships in the dump as
+# vendor/etc/vintf/manifest/android.hardware.audio.service-aidl.xml, but
+# hardware/interfaces/audio/aidl/default already registers a prebuilt_etc of
+# that exact name -> kati "MODULE.TARGET.ETC ... already defined". VINTF
+# dir-scans manifest/*.xml regardless of filename, so ship the same content
+# from the tree via PRODUCT_COPY_FILES (no module, no clash) under a
+# -mediatek name and drop the blob line from proprietary-files.txt.
 
 # -----------------------------------------------------------------------------
 # Feature permissions
