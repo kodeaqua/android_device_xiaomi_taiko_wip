@@ -12,6 +12,14 @@ hardware facts) is in the parent `../../../CLAUDE.md`. This file is about
 `device/mediatek/sepolicy_vndr` on `lineage-23.2`. The yunluo tree this was
 seeded from is `lineage-23.0` — see "LineageOS 23.2 deltas" below.
 
+**State (2026-09-08):** pushed to `kodeaqua/android_device_xiaomi_taiko_wip`
+`lineage-23.2`. Passed soong bootstrap + kati after 25 fix rounds (each logged in
+`README.md` → "AOSP-core audit"); now compiling under ninja. Build runs on a
+*different* machine; this repo has no Android tree — see parent `CLAUDE.md`
+"Build status" for the workflow, the fix-class cheat sheet, and which reference
+repos to check. Camera is **enabled**. `configs/audio|media|wifi` are taiko's own
+now. `BOARD_SUPER_PARTITION_SIZE` is real (11 GiB from the scatter).
+
 ## File responsibilities
 
 | File | Owns |
@@ -21,15 +29,15 @@ seeded from is `lineage-23.0` — see "LineageOS 23.2 deltas" below.
 | `lineage_taiko.mk` | product identity, `inherit-product` chain (`core_64_bit_only` + `full_base` + `common_full_tablet_wifionly`) |
 | `AndroidProducts.mk` | lunch combos |
 | `extract-files.py` / `setup-makefiles.py` | blob extractor; `blob_fixups` map is tuned against `check_elf` output |
-| `proprietary-files.txt` | ~3.5k blobs (aospdtgen, this exact build) |
+| `proprietary-files.txt` | ~2.2k blobs (aospdtgen, this exact build, pruned ~1400 lines across 25 rounds) |
 | `proprietary-firmware.txt` | non-super firmware partitions (`dpm`, `gz`, `lk`, `md1img`, `tee`, …) |
 | `configs/props/*.prop` | per-partition props, wired via `TARGET_*_PROP` in `BoardConfig.mk` |
-| `configs/vintf/manifest.xml` | device VINTF manifest — **verbatim stock** (has `<sepolicy><version>202504</version>` + HAL `<version>`s). No `compatibility_matrix.xml` / `DEVICE_MATRIX_FILE` — stock's needs the unbuilt `mediatek-common` jar; Lineage default is used. |
-| `configs/audio\|media\|wifi\|seccomp/` | MT6789-generic, **copied from yunluo — refine from `dump-ota/vendor/etc`** |
+| `configs/vintf/manifest.xml` | device VINTF manifest — **verbatim stock** (`<sepolicy><version>202504</version>` + HAL `<version>`s), verified = dump. Plus `manifest_audio_aidl.xml` (2nd `DEVICE_MANIFEST_FILE`, the `audio.core` AIDL HALs). No `DEVICE_MATRIX_FILE` — stock's needs the unbuilt `mediatek-common` jar. |
+| `configs/audio\|media\|wifi/` | **taiko's own, from `dump-ota/vendor/etc/`** (replaced the yunluo copies). `seccomp/` still MT6789-generic. |
 | `rootdir/etc/fstab.mt6789` | first-stage **and** recovery fstab (erofs+ext4 fallback lines) |
 | `rootdir/etc/*.rc`, `rootdir/bin/*.sh` | MTK init scripts from the stock vendor ramdisk; each has a `prebuilt_etc`/`sh_binary` in `rootdir/Android.bp` **and** a line in `device.mk` `PRODUCT_PACKAGES` — keep both in sync |
 | `sepolicy/vendor/` | **yunluo starting point** — regenerate from first-boot `avc: denied` |
-| `overlay/`, `overlay-lineage/` | RRO packages (in `PRODUCT_PACKAGES`, **not** `DEVICE_PACKAGE_OVERLAYS`); values still yunluo's |
+| `overlay/`, `overlay-lineage/` | RRO packages (in `PRODUCT_PACKAGES`, **not** `DEVICE_PACKAGE_OVERLAYS`). `power_profile.xml` battery = 9000, `config_defaultPeakRefreshRate` = 90 (right); auto-brightness curves still yunluo's |
 | `prebuilt/` | `boot.img`/`dtbo.img` (used as-is), `vendor_boot.img` (reference), `dtb/mt6789.dtb`, `modules/`, `vendor_dlkm/`, `system_dlkm/` |
 
 ## Boot / kernel model (do not "fix" this into a normal kernel build)
@@ -86,10 +94,11 @@ composer@3.x, allocator, `gatekeeper.mitee`, `keymint@4.0.mitee`, usb,
 sensors multihal, health (`example`), lights, media c2, `wifi-service-lazy`,
 `wpa_supplicant`, `hostapd`, contexthub, `dumpstate.xiaomi`, mtkpower AIDL, …
 
-`device.mk` adds source modules ONLY where there is no usable blob **or** where
-the blob name collides with a `hardware/mediatek` source module (see next
-section). Current source list: `power-service.pixel-libperfmgr`,
-`vendor.lineage.health-service.default`, `PowerOffAlarm`, `create_pl_dev`,
+`device.mk` adds source modules ONLY where there is no usable blob, the blob
+name collides with a source module, or HyperOS shipped a verbatim-AOSP blob.
+Current source list: `vendor.lineage.health-service.default`,
+`android.hardware.health-service.example`, `android.hardware.sensors-service.multihal`,
+`wpa_supplicant`, `hostapd`, `PowerOffAlarm`, `create_pl_dev`,
 `drm-service.clearkey`, `fastbootd`, `libmtkperf_client_vendor`,
 `libperfctl_vendor`, `libpowerhalwrap_vendor`, `libaedv`, `libladder`,
 `chipinfo`, `wlan_assistant`, `libwifi-hal-wrapper`,
@@ -101,12 +110,13 @@ RRO overlays, init scripts, feature permission XMLs.
 **Never** add a `hardware/mediatek` source HAL that a blob already covers with a
 DIFFERENT name (bluetooth, boot, audio, usb, vibrator) — you'd run two.
 
-**Power**: stock MediaTek blob (`vendor.mediatek.hardware.mtkpower-service.mediatek`
-+ `power-mediatek.xml`) provides `android.hardware.power/IPower/default`. Do NOT
-add `android.hardware.power-service.pixel-libperfmgr` without also removing
-`power-mediatek.xml` and the mtkpower AIDL service from `proprietary-files.txt` —
-two IPower manifest entries + two racing services otherwise. `configs/powerhint.json`
-is parked for that future switch, currently uncopied.
+**Power**: kept the stock MediaTek blob stack
+(`vendor.mediatek.hardware.mtkpower-service.mediatek` + `power-mediatek.xml`) for
+`android.hardware.power/IPower/default`. The pixel-libperfmgr switch was tried
+and **reverted** (its `libpowerhal`/`libaimemc` need `libpower_timer` /
+`mtkpower-V1-ndk` from the source stack). Do not re-add
+`android.hardware.power-service.pixel-libperfmgr`. `configs/powerhint.json` is
+parked, uncopied.
 
 ## LineageOS 23.2 deltas (vs the yunluo 23.0 seed)
 
@@ -144,11 +154,38 @@ grep -E '^[a-zA-Z]' proprietary-files.txt | sed 's/;.*//;s/|.*//' | awk -F/ '{pr
 comm -12 /tmp/m.txt /tmp/b.txt      # <- must be empty
 ```
 
-## Build
+Rounds 18-25 hit **three more variants of the same idea** — a blob and a
+non-blob both produce the same thing:
+
+1. **Module-name clash with `hardware/interfaces` / `hardware/libhardware` /
+   `frameworks` / `external`**, not just `hardware/mediatek`. HyperOS ships AOSP
+   reference impls verbatim (`android.hardware.health-service.example`,
+   `sensors-service.multihal`, `test-nusensors`, `*.default.so` passthrough
+   HALs, `libbluetooth_audio_session*`, legacy HIDL impls). → delete the blob;
+   `PRODUCT_PACKAGES += <the source module>` if it isn't pulled by a base config.
+2. **Install-path clash** (`error: overriding commands for target '<out path>'`).
+   Same file, two producers — a blob `prebuilt_etc` and either an AOSP
+   `prebuilt_etc`/`vintf_fragment` (`bluetooth_audio.xml`, LE-audio/HFP configs,
+   `mkshrc`, boringssl `.rc`) **or** a build generator (`aconfig/*`,
+   `aconfig_flags.pb`, `build_flags.json`, `linker.config.pb`, per-partition
+   `modules.load` from `BOARD_*_KERNEL_MODULES_LOAD`, the device `fstab` we
+   already ship from `rootdir/`). → delete the blob line (and any redundant
+   `PRODUCT_COPY_FILES`).
+3. **VINTF xml can't go through `PRODUCT_COPY_FILES`** — the build scans copies
+   for VINTF content and rejects them. Merge as a second `DEVICE_MANIFEST_FILE`.
+
+Scan against the local `android_hardware_interfaces/` (repo root, `lineage-23.2`)
+for `prebuilt_etc`/`vintf_fragment` `name:`/`src:`/`filename:` + `sub_dir:` and
+compare install paths to the blob list. `frameworks/`, `system/`, `packages/`,
+`external/` are NOT on this machine — those collisions can only be caught from
+the actual kati error.
+
+## Build (on the other machine)
 
 ```
-lunch lineage_taiko-userdebug
-mka bacon      # after ./extract-files.py <dump> -> vendor/xiaomi/taiko
+breakfast taiko && brunch taiko          # from ~/android/lineage
+# re-extract only when extract-files.py changed or a blob was added:
+rm -rf vendor/xiaomi/taiko && ./device/xiaomi/taiko/extract-files.py <ota.zip>
 ```
 
 ## When editing

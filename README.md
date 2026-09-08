@@ -92,18 +92,27 @@ prebuilt/
 ## Building
 
 ```
-# in a LineageOS 23 (Android 16) tree
+# in a LineageOS 23.2 (Android 16) tree, with this repo at device/xiaomi/taiko
 source build/envsetup.sh
-# device tree  -> device/xiaomi/taiko   (this dir)
-# kernel       -> none (prebuilt boot.img)
-# vendor blobs -> vendor/xiaomi/taiko   (run ./extract-files.py <path-to-dump> first)
-lunch lineage_taiko-userdebug
-mka bacon
+./device/xiaomi/taiko/extract-files.py <path-to-ota.zip>   # -> vendor/xiaomi/taiko
+breakfast taiko && brunch taiko                            # 23.2: codename only
 ```
 
-`extract-files.py` runs with `check_elf=True`; it will list any blob whose
-`NEEDED` libs are missing — add targeted fixups to the `blob_fixups` map and
-re-run.
+`breakfast taiko` builds `lunch lineage_taiko-bp4a-userdebug` (release token
+`bp4a` from `vendor/lineage/vars/aosp_target_release`). Kernel = prebuilt
+`boot.img` (`TARGET_NO_KERNEL`). `extract-files.py` runs with `check_elf=True`
+and lists blobs with missing `NEEDED` libs — add `blob_fixups` and re-extract.
+`./setup-makefiles.py` regenerates `Android.bp` from `proprietary-files.txt`
+*without* re-copying blobs (use it after line removals).
+
+## Status (2026-09-08)
+
+Pushed to `kodeaqua/android_device_xiaomi_taiko_wip` `lineage-23.2`. Passed
+soong bootstrap + kati (25 fix rounds, logged below); **compiling under ninja**.
+Build runs on a separate machine — errors are pasted in and fixed here. Camera
+enabled; `configs/audio|media|wifi` = taiko's own; `BOARD_SUPER_PARTITION_SIZE`
+= 11 GiB from the scatter. See the workspace `../../../CLAUDE.md` "Build status"
+for the fix-class cheat sheet.
 
 ## AOSP-core audit (source.android.com/docs/core)
 
