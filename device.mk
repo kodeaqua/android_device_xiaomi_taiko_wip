@@ -128,6 +128,12 @@ PRODUCT_PACKAGES += \
 # MssiFrameworkOverlay / MssiNetworkStackOverlay / MssiWifiOverlay.
 $(call inherit-product, hardware/mediatek/overlay/mssi.mk)
 
+# hardware/mediatek/aidl/gadget builds its own `init.mt6789.usb.rc` prebuilt_etc
+# unless told the device ships one - which we do (rootdir/etc/init.mt6789.usb.rc,
+# extracted from the stock vendor ramdisk). Without this the two modules collide:
+#   module "init.mt6789.usb.rc" ... found in multiple namespaces
+$(call soong_config_set,mediatek_gadget,use_custom_usb_gadget_rc,true)
+
 # -----------------------------------------------------------------------------
 # Power - use the STOCK MediaTek power stack (blob).
 # vendor.mediatek.hardware.mtkpower-service.mediatek registers BOTH
