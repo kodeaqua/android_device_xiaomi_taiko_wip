@@ -111,6 +111,32 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 17 — camera re-enabled (MTK ISP6s + MiCam)
+
+Camera was dropped in the Path-A batches (81cffce et al) on the belief that
+"the MTK AIDL camera glue is built against camera.common V1, no drop-in fix".
+Re-audited: `readelf -d` on the whole stock camera set shows the live AIDL glue
+(`libmtkcam_hal_aidl_{common,device,provider,utils}`, `camerahalserver`) links
+`camera.device-V3` / `camera.provider-V3` / `camera.metadata-V3` — all of which
+lineage-23.2 `hardware/interfaces` provides (frozen V3/V3/V4). The *only* real
+skew is `libmtkcam_hal_aidl_common` -> `camera.common-V2`, while the tree has
+`camera.common` frozen at **V1** (no V2 module). That lib has **0 undefined
+`camera::common` symbols** (the V2 NEEDED is a stale link artifact), and
+`camera.device-V3` itself imports `camera.common-V1`, so `extract-files.py`
+down-patches the NEEDED V2 -> V1. Plus three trailing skews on satellite libs:
+`libmtkcam_grallocutils` graphics.common V5 -> V7, `camera.isphal-V1-ndk`
+graphics.common V6 -> V7, `libcam.utils.sensorprovider` sensors V2 -> V3.
+
+465 blob lines restored to `proprietary-files.txt` (libmtkcam*, lib3a.*,
+libcam.*, libcamalgo.*, libcameracustom*, MTK camera AIDL/HIDL interface libs,
+`camerahalserver` + `.rc`, `manifest_cameraprovider/isphal.xml`, all
+`vendor/etc/camera/*` tuning/resources). The two `android.hardware.wifi.*.xml`
+VINTF fragments that got swept into the same commits stay dropped (supplicant/
+hostapd are built from source and ship their own). `Android.mk`
+`MTK_SOC_SYMLINKS` regenerated: 265 `/vendor/lib*/mt6789 -> ..` symlinks (every
+stock mt6789 lib has one). No blob-vs-source name collisions
+(`hardware/mediatek` 23.2 has no camera source). Full re-extract required.
+
 ### Round 16 — framework compat matrix path
 
 `module "framework_compatibility_matrix.device.xml" ... source path

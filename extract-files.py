@@ -101,11 +101,34 @@ blob_fixups: blob_fixups_user_type = {
         "vendor/lib64/vendor.mediatek.hardware.pq_aidl-V3-ndk.so",
         "vendor/lib/vendor.mediatek.hardware.pq_aidl-V7-ndk.so",
         "vendor/lib64/vendor.mediatek.hardware.pq_aidl-V7-ndk.so",
+        # MTK camera ISP HAL interface lib (re-enabled camera stack)
+        "vendor/lib64/vendor.mediatek.hardware.camera.isphal-V1-ndk.so",
     ): blob_fixup()
     .patchelf_version(patchelf_version)
     .replace_needed(
         "android.hardware.graphics.common-V6-ndk.so",
         "android.hardware.graphics.common-V7-ndk.so",
+    ),
+    # graphics.common V5 (older still): the MTK camera gralloc util lib was
+    # built two letters back. Same types-only superset argument -> bump to V7.
+    "vendor/lib64/mt6789/libmtkcam_grallocutils.so": blob_fixup()
+    .patchelf_version(patchelf_version)
+    .replace_needed(
+        "android.hardware.graphics.common-V5-ndk.so",
+        "android.hardware.graphics.common-V7-ndk.so",
+    ),
+    # camera.common AIDL skew - the ONLY real blocker for the MTK camera stack:
+    # libmtkcam_hal_aidl_common links camera.common-V2 (HyperOS Android 16), but
+    # lineage-23.2's hardware/interfaces has camera.common frozen at V1 only (no
+    # V2 module is generated). camera.device-V3 imports camera.common-V1, so the
+    # lib ends up wanting both -> "multiple versions". The lib has 0 undefined
+    # camera::common symbols (readelf), i.e. the V2 NEEDED is a stale link-time
+    # artifact, so down-patch it to V1.
+    "vendor/lib64/mt6789/libmtkcam_hal_aidl_common.so": blob_fixup()
+    .patchelf_version(patchelf_version)
+    .replace_needed(
+        "android.hardware.camera.common-V2-ndk.so",
+        "android.hardware.camera.common-V1-ndk.so",
     ),
     # sensors AIDL skew: the MTK PQ HAL impl links sensors-V2 (HyperOS A16),
     # but the source android.frameworks.sensorservice-V1-ndk on lineage-23.2
@@ -114,6 +137,9 @@ blob_fixups: blob_fixups_user_type = {
     (
         "vendor/lib/hw/mt6789/vendor.mediatek.hardware.pq_aidl-impl.so",
         "vendor/lib64/hw/mt6789/vendor.mediatek.hardware.pq_aidl-impl.so",
+        # MTK camera sensor-provider lib links sensors-V2 + frameworks
+        # .sensorservice-V1-ndk (-> sensors-V3); bump the direct NEEDED to V3.
+        "vendor/lib64/mt6789/libcam.utils.sensorprovider.so",
     ): blob_fixup()
     .patchelf_version(patchelf_version)
     .replace_needed(
