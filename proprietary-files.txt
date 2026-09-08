@@ -1021,7 +1021,6 @@ vendor/lib/libpqxmlflagparser.so
 vendor/lib/libpqxmlparser.so
 vendor/lib/librhytheyecare.so
 vendor/lib/libsdr2hdr.so
-vendor/lib/libsensorndkbridge.so
 vendor/lib/libsre.so
 vendor/lib/libtruetone.so
 vendor/lib/libvideomode.so
@@ -1089,7 +1088,6 @@ vendor/lib64/libpqxmlflagparser.so
 vendor/lib64/libpqxmlparser.so
 vendor/lib64/librhytheyecare.so
 vendor/lib64/libsdr2hdr.so
-vendor/lib64/libsensorndkbridge.so
 vendor/lib64/libsilkybrightnesscore.so
 vendor/lib64/libsre.so
 vendor/lib64/libtruetone.so
