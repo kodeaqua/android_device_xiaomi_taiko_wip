@@ -31,8 +31,6 @@ vendor/lib/android.hardware.bluetooth.audio-impl-mediatek.so
 vendor/lib64/android.hardware.bluetooth.audio-impl-mediatek.so
 vendor/lib/hw/android.hardware.audio.effect.aidl-impl-mediatek.so
 vendor/lib64/hw/android.hardware.audio.effect.aidl-impl-mediatek.so
-system_ext/bin/hw/android.hardware.audio.parameter_parser.service
-system_ext/etc/init/android.hardware.audio.parameter_parser.service.rc
 vendor/bin/hw/android.hardware.audio.service-aidl.mediatek
 vendor/etc/init/android.hardware.audio.service-aidl.mediatek.rc
 vendor/etc/vintf/manifest/android.hardware.audio.effect.service-aidl.xml
