@@ -111,6 +111,14 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 7 — libwifi-hal-mediatek undefined
+
+`"libwifi_hal_vendor_impl_defaults" depends on undefined module "libwifi-hal-mediatek"`.
+`BOARD_WLAN_DEVICE := MediaTek` (added in round 2) makes LineageOS' frameworks
+wifi HAL select a `libwifi-hal-mediatek` module that doesn't exist on 23.2 —
+`hardware/mediatek/wlan` provides `libwifi-hal-wrapper`. Removed
+`BOARD_WLAN_DEVICE`; unset uses the wrapper path (same as yunluo).
+
 ### Round 6 — soong namespace / dependency repos
 
 `vendor/xiaomi/taiko/Android.bp:5: namespace hardware/lineage/compat does not exist`.

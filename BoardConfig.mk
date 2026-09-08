@@ -313,8 +313,12 @@ BOARD_VENDOR_SEPOLICY_DIRS += $(DEVICE_PATH)/sepolicy/vendor
 # as blobs (proprietary-files.txt) -> no BOARD_WPA_SUPPLICANT_* build vars here.
 # Only the runtime driver paths (read by the framework) and the HAL-wrapper
 # knobs are set.
+#
+# BOARD_WLAN_DEVICE is intentionally NOT set: LineageOS' frameworks wifi HAL
+# maps BOARD_WLAN_DEVICE := MediaTek onto a `libwifi-hal-mediatek` module that
+# does not exist on 23.2 (hardware/mediatek/wlan provides `libwifi-hal-wrapper`
+# instead). Leaving it unset uses the wrapper path, matching the yunluo tree.
 # -----------------------------------------------------------------------------
-BOARD_WLAN_DEVICE := MediaTek
 WPA_SUPPLICANT_VERSION := VER_0_8_X
 WIFI_DRIVER_FW_PATH_PARAM := "/dev/wmtWifi"
 WIFI_DRIVER_FW_PATH_STA := "STA"
