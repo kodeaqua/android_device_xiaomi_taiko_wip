@@ -23,6 +23,8 @@
 #        is built from source.
 
 # Audio
+vendor/lib/hw/android.hardware.audio.effect.aidl-impl-mediatek.so
+vendor/lib64/hw/android.hardware.audio.effect.aidl-impl-mediatek.so
 system_ext/bin/hw/android.hardware.audio.parameter_parser.service
 system_ext/etc/init/android.hardware.audio.parameter_parser.service.rc
 vendor/bin/hw/android.hardware.audio.service-aidl.mediatek
@@ -1501,7 +1503,6 @@ vendor/bin/doeapp-sat
 vendor/bin/dreport
 vendor/bin/dtc_vendor
 vendor/bin/eara_io_service
-vendor/bin/factory
 vendor/bin/ffu
 vendor/bin/fidoca_mitee
 vendor/bin/fpsgo
