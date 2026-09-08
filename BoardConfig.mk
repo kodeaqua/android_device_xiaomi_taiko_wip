@@ -311,11 +311,13 @@ BOARD_VENDOR_SEPOLICY_DIRS += $(DEVICE_PATH)/sepolicy/vendor
 # -----------------------------------------------------------------------------
 # Wi-Fi (MediaTek connac / wmt) - Wi-Fi-only SKU
 #
-# lineage-23.2 note: hardware/mediatek dropped wpa_supplicant_8_lib, so
-# `lib_driver_cmd_mt66xx` no longer exists. wpa_supplicant / hostapd are taken
-# as blobs (proprietary-files.txt) -> no BOARD_WPA_SUPPLICANT_* build vars here.
-# Only the runtime driver paths (read by the framework) and the HAL-wrapper
-# knobs are set.
+# lineage-23.2 note: hardware/mediatek dropped wpa_supplicant_8_lib, so the
+# `lib_driver_cmd_mt66xx` private driver_cmd lib no longer exists - we do NOT
+# set BOARD_WPA_SUPPLICANT_PRIVATE_LIB. wpa_supplicant / hostapd are built from
+# external/wpa_supplicant_8 against the plain nl80211 driver (device.mk adds
+# them to PRODUCT_PACKAGES). BOARD_HOSTAPD_DRIVER is what makes the `hostapd`
+# soong module exist at all - without it PRODUCT_PACKAGES fails with
+# "non-existent modules ... hostapd".
 #
 # BOARD_WLAN_DEVICE is intentionally NOT set: LineageOS' frameworks wifi HAL
 # maps BOARD_WLAN_DEVICE := MediaTek onto a `libwifi-hal-mediatek` module that
@@ -323,6 +325,8 @@ BOARD_VENDOR_SEPOLICY_DIRS += $(DEVICE_PATH)/sepolicy/vendor
 # instead). Leaving it unset uses the wrapper path, matching the yunluo tree.
 # -----------------------------------------------------------------------------
 WPA_SUPPLICANT_VERSION := VER_0_8_X
+BOARD_WPA_SUPPLICANT_DRIVER := NL80211
+BOARD_HOSTAPD_DRIVER := NL80211
 WIFI_DRIVER_FW_PATH_PARAM := "/dev/wmtWifi"
 WIFI_DRIVER_FW_PATH_STA := "STA"
 WIFI_DRIVER_FW_PATH_AP := "AP"
