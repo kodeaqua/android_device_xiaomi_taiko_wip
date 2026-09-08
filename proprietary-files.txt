@@ -494,8 +494,6 @@ vendor/lib64/libOpenCL.so
 vendor/lib64/libSQLiteModule_VER_ALL.so
 vendor/lib64/libTrueSight.so
 vendor/lib64/libaaa_flickerutil.so
-vendor/lib64/libanc_night.so
-vendor/lib64/libanc_night_preview.so
 vendor/lib64/libged.so
 vendor/lib64/libgralloc_extra.so
 vendor/lib64/libgz_uree.so
