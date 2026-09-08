@@ -111,6 +111,17 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 25 — double-defined modules.load
+
+`Makefile:712: error: overriding commands for target
+'.../vendor_dlkm/lib/modules/modules.load', previously defined at
+build/make/core/Makefile:148`. `device.mk` both (a) wired
+`BOARD_VENDOR_KERNEL_MODULES_LOAD` / `BOARD_SYSTEM_KERNEL_MODULES_LOAD` (which
+makes the build run `depmod` and emit `lib/modules/modules.{load,dep,alias,...}`)
+**and** (b) `PRODUCT_COPY_FILES`-copied `prebuilt/*/modules.load` onto the same
+path. Dropped (b) - the BOARD_* wiring is the correct one and preserves our
+curated load order.
+
 ### Round 24 — mkshrc + linker.config.pb
 
 `Makefile:148: error: overriding commands for target '.../vendor/etc/mkshrc'`.

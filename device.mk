@@ -188,13 +188,11 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
     android.hardware.drm-service.clearkey
 
-# -----------------------------------------------------------------------------
-# Kernel module load lists shipped into the module partitions
-# (.ko files come from BOARD_*_KERNEL_MODULES in BoardConfig.mk)
-# -----------------------------------------------------------------------------
-PRODUCT_COPY_FILES += \
-    $(LOCAL_PATH)/prebuilt/vendor_dlkm/modules.load:$(TARGET_COPY_OUT_VENDOR_DLKM)/lib/modules/modules.load \
-    $(LOCAL_PATH)/prebuilt/system_dlkm/modules.load:$(TARGET_COPY_OUT_SYSTEM_DLKM)/lib/modules/modules.load
+# NB: the vendor_dlkm / system_dlkm modules.load files are NOT copied here -
+# BOARD_VENDOR_KERNEL_MODULES_LOAD / BOARD_SYSTEM_KERNEL_MODULES_LOAD in
+# BoardConfig.mk make the build generate lib/modules/modules.{load,dep,alias,...}
+# via depmod. A PRODUCT_COPY_FILES of modules.load on top of that is a hard
+# "overriding commands for target .../modules.load" kati error.
 
 # -----------------------------------------------------------------------------
 # fstab / first-stage
