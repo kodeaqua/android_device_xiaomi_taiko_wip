@@ -1244,29 +1244,14 @@ vendor/lib64/vendor.xiaomi.hardware.mfidoca-V1-ndk.so
 vendor/lib64/vendor.xiaomi.hardware.mlipay-V1-ndk.so
 
 # Power
-vendor/bin/hw/vendor.mediatek.hardware.mtkpower-service.mediatek
-vendor/bin/hw/vendor.mediatek.hardware.mtkpower_applist-service.mediatek
-vendor/etc/init/vendor.mediatek.hardware.mtkpower@1.0-init.rc
-vendor/etc/init/vendor.mediatek.hardware.mtkpower@1.0-service.rc
 vendor/lib/hw/power.default.so
-vendor/lib/hw/vendor.mediatek.hardware.mtkpower-aidl-impl.so
-vendor/lib/libpower_timer.so
 vendor/lib/libpowerhal.so
 vendor/lib/vendor.mediatek.framework.mtksf_ext-V7-ndk.so
-vendor/lib/vendor.mediatek.hardware.mtkpower-V2-ndk.so
-vendor/lib/vendor.mediatek.hardware.mtkpower-V3-ndk.so
-vendor/lib/vendor.mediatek.hardware.mtkpower_applist-V3-ndk.so
 vendor/lib/vendor.mediatek.hardware.netdagent-V1-ndk.so
 vendor/lib/vendor.mediatek.hardware.netdagent@1.0.so
 vendor/lib64/hw/power.default.so
-vendor/lib64/hw/vendor.mediatek.hardware.mtkpower-aidl-impl.so
-vendor/lib64/libpower_timer.so
 vendor/lib64/libpowerhal.so
 vendor/lib64/vendor.mediatek.framework.mtksf_ext-V7-ndk.so
-vendor/lib64/vendor.mediatek.hardware.mtkpower-V1-ndk.so
-vendor/lib64/vendor.mediatek.hardware.mtkpower-V2-ndk.so
-vendor/lib64/vendor.mediatek.hardware.mtkpower-V3-ndk.so
-vendor/lib64/vendor.mediatek.hardware.mtkpower_applist-V3-ndk.so
 vendor/lib64/vendor.mediatek.hardware.netdagent-V1-ndk.so
 vendor/lib64/vendor.mediatek.hardware.netdagent@1.0.so
 
@@ -1619,7 +1604,6 @@ vendor/etc/init/mrm_mitee.rc
 vendor/etc/init/mtk_pkm_service.rc
 vendor/etc/init/mtk_storageproxyd.rc
 vendor/etc/init/mtklog.rc
-vendor/etc/init/mtkpower_applist-mtk-default.rc
 vendor/etc/init/muxreport.rc
 vendor/etc/init/netdagent.rc
 vendor/etc/init/networksetting.rc
@@ -1684,8 +1668,6 @@ vendor/etc/vintf/manifest/manifest_vendor.xiaomi.hardware.otrpagent@2.0.xml
 vendor/etc/vintf/manifest/mapper.mediatek.xml
 vendor/etc/vintf/manifest/miface.xml
 vendor/etc/vintf/manifest/mrm.xml
-vendor/etc/vintf/manifest/mtkpower_applist-mtk-default.xml
-vendor/etc/vintf/manifest/power-mediatek.xml
 vendor/etc/vintf/manifest/vendor.xiaomi.hardware.misys.common.xml
 vendor/etc/vintf/manifest/vendor.xiaomi.hardware.misys.core.xml
 vendor/etc/vintf/manifest/vendor.xiaomi.hw.touchfeature-service.xml
