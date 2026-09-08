@@ -168,9 +168,11 @@ BOARD_VENDOR_BOOTIMAGE_PARTITION_SIZE := 67108864
 BOARD_DTBOIMG_PARTITION_SIZE := 8388608
 
 # TODO: confirm against the real GPT / super_map.pb from a fastboot dump.
-# 9126805504 is the value shipped on yunluo (Redmi Pad 1, same MT6789 platform)
-# and is the right ballpark for this 4 GB tablet; verify before release.
-BOARD_SUPER_PARTITION_SIZE := 9126805504
+# From the taiko MT6789_Android_scatter.txt: super partition_size = 0x2c0000000
+# = 11811160064 (exactly 11 GiB). Virtual A/B -> one copy of the logical set
+# lives in super, so the group gets ~all of it (super - 4 MiB LP metadata),
+# never super/2.
+BOARD_SUPER_PARTITION_SIZE := 11811160064
 BOARD_SUPER_PARTITION_GROUPS := mtk_dynamic_partitions
 BOARD_MTK_DYNAMIC_PARTITIONS_PARTITION_LIST := \
     system \
@@ -180,7 +182,7 @@ BOARD_MTK_DYNAMIC_PARTITIONS_PARTITION_LIST := \
     vendor_dlkm \
     odm_dlkm \
     system_dlkm
-BOARD_MTK_DYNAMIC_PARTITIONS_SIZE := 9122611200
+BOARD_MTK_DYNAMIC_PARTITIONS_SIZE := 11806965760
 
 BOARD_USES_METADATA_PARTITION := true
 BOARD_SUPER_PARTITION_METADATA_DEVICE := super

@@ -417,8 +417,9 @@ Still open: see TODO.
 
 ## TODO before a flashable build
 
-- [ ] `BOARD_SUPER_PARTITION_SIZE` / group size — confirm from a real
-      `fastboot getvar all` or the stock `super_map.pb` (placeholder = yunluo's).
+- [x] `BOARD_SUPER_PARTITION_SIZE` — from `MT6789_Android_scatter.txt`:
+      `super partition_size = 0x2c0000000` = 11811160064 (11 GiB). Group =
+      super − 4 MiB = 11806965760.
 - [ ] `extract-files.py` blob fixups — iterate against `check_elf` output.
 - [ ] `sepolicy/vendor` — rebuild from `dmesg | grep 'avc: denied'` on first boot;
       the copied yunluo rules only partially match.
