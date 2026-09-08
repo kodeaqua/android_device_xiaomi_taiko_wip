@@ -111,6 +111,30 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 5 — soong "module already defined" (proprietary-files dupes)
+
+`vendor/xiaomi/taiko/Android.bp` had ~300 `prebuilt_* already defined` errors.
+extract-utils derives a soong module name from the file **basename**, so any two
+listed files with the same basename collide. Deduped `proprietary-files.txt`
+(-538 lines):
+- **`vendor/lib*/foo.so` + `vendor/lib*/mt6789/foo.so`** — the bare one is a
+  symlink in the stock image; kept only the real `mt6789/` file. `Android.mk`
+  now recreates all 280 `/vendor/<dir>/foo.so -> mt6789/foo.so` symlinks (same
+  mechanism as the yunluo tree). Same for `bin/`, `bin/hw/`, `hw/`, `egl/`,
+  `mtkcam/` SoC subdirs.
+- **`binShaders32/` camera shaders** — dropped (64-bit-only device, `binShaders64/`
+  is used).
+- **`system_ext/lib*/` + `system_ext/etc/`** copies whose `vendor/` twin is kept
+  (MTK HIDL/AIDL interface `.so`s: pq@2.x, mtkpower, camera.atms/isphal,
+  composer_ext; audio-policy XMLs).
+- **`vendor/etc/imgsensor/mt699{1,3}/`, `vendor/etc/mt699{1,3}/`** — flagship-SoC
+  camera calibration, wrong platform, dropped.
+- **`vendor/etc/rsc/`** and all `build_taiko_*.prop` — HyperOS regional runtime
+  config, not used by LineageOS.
+- **`vendor/etc/camera/resources/render/Effect/`** — Xiaomi beautify resources,
+  duplicate filenames across effect subdirs; dropped (camera capture works
+  without them).
+
 ### Round 4 — proprietary-files.txt (extract-files.py failures)
 
 First `./extract-files.py` run on the build machine exited with 53 "file not
