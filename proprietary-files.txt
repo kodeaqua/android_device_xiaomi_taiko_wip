@@ -953,6 +953,10 @@ vendor/lib64/chre_atoms_log.so
 vendor/lib64/chremetrics-cpp.so
 
 # Display
+vendor/lib/libminiui.so
+vendor/lib64/libminiui.so
+vendor/lib/libpixelflinger.so
+vendor/lib64/libpixelflinger.so
 vendor/bin/hw/mt6789/android.hardware.graphics.allocator-V2-service-mediatek.mt6789
 vendor/bin/hw/android.hardware.graphics.composer@3.2-service
 vendor/bin/hw/android.hardware.graphics.composer@3.3-service
