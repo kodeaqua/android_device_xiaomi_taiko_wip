@@ -2025,7 +2025,6 @@ vendor/lib/libnxp_extamp_intf.so
 vendor/lib/libpkm.so
 vendor/lib/libpqcustutils.so
 vendor/lib/librt_extamp_intf.so
-vendor/lib/libruy.so
 vendor/lib/libsimlock.so
 vendor/lib/libsimmelock.so
 vendor/lib/libsixth.so
@@ -2309,12 +2308,10 @@ vendor/lib64/libpqcustutils.so
 vendor/lib64/libremosaic_wrapper.so
 vendor/lib64/libremosaiclib.so
 vendor/lib64/librt_extamp_intf.so
-vendor/lib64/libruy.so
 vendor/lib64/libsatpro_tap.so
 vendor/lib64/libsimlock.so
 vendor/lib64/libsimmelock.so
 vendor/lib64/libsixth.so
-vendor/lib64/libsoft_attestation_cert.so
 vendor/lib64/libsoter.so
 vendor/lib64/libspeech_enh_lib.so
 vendor/lib64/libspeechparser_vendor.so
