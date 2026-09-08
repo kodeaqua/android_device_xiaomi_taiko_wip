@@ -316,11 +316,16 @@ DEVICE_MANIFEST_FILE := \
 # vendor.mediatek.hardware.mbrainj) that only exist when the mediatek-common
 # framework jar is built - we do not build it. LineageOS' default device
 # compatibility matrix is used instead (OTA-time check only).
-# Append only our device-specific matrix. vendor/lineage/config/common.mk adds
+# Append only our device-specific matrices. vendor/lineage/config/common.mk adds
 # its own vendor/lineage/config/device_framework_matrix.xml itself - do NOT
 # re-list it here ('does not exist' at soong bootstrap if the path ever moves,
 # and ':=' would clobber the Lineage + AOSP defaults).
+# configs/vintf/device_framework_matrix.xml covers the proprietary Xiaomi/Dolby
+# vendor-extension HALs (and mtkpower/IMtkPowerService @3) that the stock
+# manifest + blob vintf fragments advertise but no shared framework matrix
+# lists - without it checkvintf --check-compat fails at OTA packaging time.
 DEVICE_FRAMEWORK_COMPATIBILITY_MATRIX_FILE += \
+    $(CONFIGS_PATH)/vintf/device_framework_matrix.xml \
     hardware/mediatek/vintf/mediatek_framework_compatibility_matrix.xml
 
 # -----------------------------------------------------------------------------

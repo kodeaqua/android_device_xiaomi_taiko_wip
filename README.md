@@ -105,11 +105,12 @@ and lists blobs with missing `NEEDED` libs — add `blob_fixups` and re-extract.
 `./setup-makefiles.py` regenerates `Android.bp` from `proprietary-files.txt`
 *without* re-copying blobs (use it after line removals).
 
-## Status (2026-09-08)
+## Status (2026-09-09)
 
 Pushed to `kodeaqua/android_device_xiaomi_taiko_wip` `lineage-23.2`. Passed
-soong bootstrap + kati (34 fix rounds, logged below); **compiling under ninja**
-(reached ~22%, blob `.rc` `host_init_verifier`, before the Round 34 fix).
+soong bootstrap + kati + the **full ninja compile** (35 fix rounds, logged
+below); now at **OTA packaging** — Round 35 fixed `checkvintf --check-compat`
+(`Package OTA` / `ota_from_target_files` → `check_target_files_vintf.py`).
 Build runs on a separate machine — errors are pasted in and fixed here. Camera
 enabled; `configs/audio|media|wifi` = taiko's own; `BOARD_SUPER_PARTITION_SIZE`
 = 11 GiB from the scatter. See the workspace `../../../CLAUDE.md` "Build status"
@@ -120,6 +121,45 @@ for the fix-class cheat sheet.
 Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
+
+### Round 35 — OTA-time `checkvintf --check-compat`: proprietary vendor HALs not in any FCM
+
+Ninja finished the whole compile; `Package OTA` (`ota_from_target_files` →
+`check_target_files_vintf.py` → `checkvintf --check-compat`) fails:
+
+```
+ERROR: files are incompatible: The following instances are in the device
+manifest but not specified in framework compatibility matrix:
+    vendor.dolby.dms.IDms/default (@1)
+    vendor.mediatek.hardware.mtkpower.IMtkPowerService/default (@3)
+    vendor.xiaomi.hardware.aidl.mtdservice.IMTService/default (@1)
+    ... (22 instances total)
+    vendor.xiaomi.sensor.citsensorservice.ICitSensorService/default (@1)
+```
+
+At FCM level 202504 `checkvintf` requires **every** device-manifest HAL instance
+(here: `configs/vintf/manifest.xml` + the blob `vendor/etc/vintf/manifest/*.xml`
+fragments — `power-mediatek.xml`, `dms-service.xml`, `vendor.xiaomi.hardware.*`,
+`manifest_mtkblackbox.xml`, `vendor.xiaomi.hw.touchfeature-service.xml`, …) to be
+matched by an entry in some framework compatibility matrix. The MediaTek
+`vendor.mediatek.hardware.*` HALs are covered by
+`hardware/mediatek/vintf/mediatek_framework_compatibility_matrix.xml` (already
+wired), **except** `mtkpower/IMtkPowerService`: that FCM has it at `version 1-2`
+while the `power-mediatek.xml` blob advertises `@3` (range max is enforced —
+`3 > 2` ⇒ incompatible). The 21 proprietary `vendor.xiaomi.*` / `vendor.dolby.*`
+HALs are in no shared matrix at all.
+
+Fix (same philosophy as Round 16 — keep it in the device tree, don't touch the
+shared MTK/Lineage matrices): new
+`configs/vintf/device_framework_matrix.xml` (`<compatibility-matrix
+type="framework">`), one `<hal format="aidl" optional="true">` per HAL with the
+exact interface names + versions from the error (19 `<hal>` blocks, 22
+`<interface>` — `mrm` has 3, `misys.common` has 2), plus a
+`vendor.mediatek.hardware.mtkpower` / `IMtkPowerService` `version 1-3` entry that
+widens the accepted range. Wired via `DEVICE_FRAMEWORK_COMPATIBILITY_MATRIX_FILE
++=` in `BoardConfig.mk`, listed before the MediaTek FCM. `optional="true"`
+everywhere — these are device-specific HALs, the check only needs them *allowed*,
+not *mandated*. Versions use `1-N` ranges (N = advertised version) for headroom.
 
 ### Round 34 — drop the legacy HIDL AEE service (kept the AIDL one)
 

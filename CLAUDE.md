@@ -12,9 +12,10 @@ hardware facts) is in the parent `../../../CLAUDE.md`. This file is about
 `device/mediatek/sepolicy_vndr` on `lineage-23.2`. The yunluo tree this was
 seeded from is `lineage-23.0` — see "LineageOS 23.2 deltas" below.
 
-**State (2026-09-08):** pushed to `kodeaqua/android_device_xiaomi_taiko_wip`
-`lineage-23.2`. Passed soong bootstrap + kati after 25 fix rounds (each logged in
-`README.md` → "AOSP-core audit"); now compiling under ninja. Build runs on a
+**State (2026-09-09):** pushed to `kodeaqua/android_device_xiaomi_taiko_wip`
+`lineage-23.2`. Passed soong bootstrap + kati + the full ninja compile after 35
+fix rounds (each logged in `README.md` → "AOSP-core audit"); now at OTA
+packaging — Round 35 fixed the `checkvintf --check-compat` failure. Build runs on a
 *different* machine; this repo has no Android tree — see parent `CLAUDE.md`
 "Build status" for the workflow, the fix-class cheat sheet, and which reference
 repos to check. Camera is **enabled**. `configs/audio|media|wifi` are taiko's own
@@ -32,7 +33,7 @@ now. `BOARD_SUPER_PARTITION_SIZE` is real (11 GiB from the scatter).
 | `proprietary-files.txt` | ~2.2k blobs (aospdtgen, this exact build, pruned ~1400 lines across 25 rounds) |
 | `proprietary-firmware.txt` | non-super firmware partitions (`dpm`, `gz`, `lk`, `md1img`, `tee`, …) |
 | `configs/props/*.prop` | per-partition props, wired via `TARGET_*_PROP` in `BoardConfig.mk` |
-| `configs/vintf/manifest.xml` | device VINTF manifest — **verbatim stock** (`<sepolicy><version>202504</version>` + HAL `<version>`s), verified = dump. Plus `manifest_audio_aidl.xml` (2nd `DEVICE_MANIFEST_FILE`, the `audio.core` AIDL HALs). No `DEVICE_MATRIX_FILE` — stock's needs the unbuilt `mediatek-common` jar. |
+| `configs/vintf/manifest.xml` | device VINTF manifest — **verbatim stock** (`<sepolicy><version>202504</version>` + HAL `<version>`s), verified = dump. Plus `manifest_audio_aidl.xml` (2nd `DEVICE_MANIFEST_FILE`, the `audio.core` AIDL HALs). No `DEVICE_MATRIX_FILE` — stock's needs the unbuilt `mediatek-common` jar. `device_framework_matrix.xml` (`DEVICE_FRAMEWORK_COMPATIBILITY_MATRIX_FILE`, alongside the MTK one) marks the proprietary Xiaomi/Dolby vendor HALs + `mtkpower@3` optional so OTA-time `checkvintf` passes — see README Round 35. |
 | `configs/audio\|media\|wifi/` | **taiko's own, from `dump-ota/vendor/etc/`** (replaced the yunluo copies). `seccomp/` still MT6789-generic. |
 | `rootdir/etc/fstab.mt6789` | first-stage **and** recovery fstab (erofs+ext4 fallback lines) |
 | `rootdir/etc/*.rc`, `rootdir/bin/*.sh` | MTK init scripts from the stock vendor ramdisk; each has a `prebuilt_etc`/`sh_binary` in `rootdir/Android.bp` **and** a line in `device.mk` `PRODUCT_PACKAGES` — keep both in sync |
