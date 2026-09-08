@@ -1245,6 +1245,7 @@ vendor/lib64/vendor.xiaomi.hardware.mlipay-V1-ndk.so
 
 # Power
 vendor/bin/hw/vendor.mediatek.hardware.mtkpower-service.mediatek
+vendor/lib64/android.hardware.power-service-mediatek.so
 vendor/bin/hw/vendor.mediatek.hardware.mtkpower_applist-service.mediatek
 vendor/etc/init/vendor.mediatek.hardware.mtkpower@1.0-init.rc
 vendor/etc/init/vendor.mediatek.hardware.mtkpower@1.0-service.rc
