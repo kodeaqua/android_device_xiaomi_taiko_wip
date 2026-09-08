@@ -111,6 +111,17 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 23 — more install-path clashes: boringssl rc + vndservicemanager rc
+
+`Makefile:148: error: overriding commands for target
+'.../vendor/etc/boringssl_self_test.no_zygote.rc'`. `external/boringssl` builds
+the self-test binaries **and** installs all five
+`boringssl_self_test{,.no_zygote,.zygote32,.zygote64,.zygote64_32}.rc` files -
+HyperOS ships them verbatim as blobs. Dropped all five. Also dropped
+`vendor/etc/init/vndservicemanager.rc` while here: no `vndservicemanager` binary
+in the blob list, no `BOARD_VNDK_VERSION` set, VNDK is deprecated on A16 - the
+rc was dead weight and a latent clash with `frameworks/native/cmds/servicemanager`.
+
 ### Round 22 — stock fstab blobs vs our rootdir fstab
 
 `device.mk` installs `rootdir/etc/fstab.mt6789` to `vendor/etc/fstab.mt6789` and

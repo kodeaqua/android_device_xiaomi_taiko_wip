@@ -1093,7 +1093,6 @@ vendor/etc/init/aee_aedv64_v2.rc
 vendor/etc/init/atcid.rc
 vendor/etc/init/audiocmdservice_atci.rc
 vendor/etc/init/bootperf.rc
-vendor/etc/init/boringssl_self_test.rc
 vendor/etc/init/dcxo_nvram_init.rc
 vendor/etc/init/ddr_training.rc
 vendor/etc/init/display.rc
@@ -1149,7 +1148,6 @@ vendor/etc/init/vendor.xiaomi.hardware.vsimapp-miteeservice.rc
 vendor/etc/init/vendor.xiaomi.hw.touchfeature-service.rc
 vendor/etc/init/vendor.xiaomi.sensor.citsensorservice.aidl.rc
 vendor/etc/init/vgoservice.rc
-vendor/etc/init/vndservicemanager.rc
 vendor/etc/init/wallpapercolor.rc
 vendor/etc/mbrain/mbrain_passthrough_config.json
 vendor/etc/mbrain/mbrain_runtime_appiot_config.json
@@ -1212,10 +1210,6 @@ vendor/etc/audio_framework_configuration.xml
 vendor/etc/audio_policy.conf
 vendor/etc/aurisys_config.xml
 vendor/etc/aurisys_config_adsp.xml
-vendor/etc/boringssl_self_test.no_zygote.rc
-vendor/etc/boringssl_self_test.zygote32.rc
-vendor/etc/boringssl_self_test.zygote64.rc
-vendor/etc/boringssl_self_test.zygote64_32.rc
 vendor/etc/breakwhiteapplist.xml
 vendor/etc/cgroups.json
 vendor/etc/command.csv
