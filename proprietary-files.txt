@@ -37,7 +37,6 @@ vendor/lib/hw/audio.r_submix.mediatek.so
 vendor/lib/hw/audio.r_submix.mt6789.so
 vendor/lib/hw/audio.usb.default.so
 vendor/lib/hw/vendor.mediatek.hardware.audio-impl.so
-vendor/lib/libaconfig_storage_read_api_cc.so
 vendor/lib/libaudiotoolkit_vendor.so
 vendor/lib/libbluetooth_audio_session_aidl_mtk.so
 vendor/lib/libbwc.so
@@ -51,7 +50,6 @@ vendor/lib64/hw/audio.r_submix.mediatek.so
 vendor/lib64/hw/audio.r_submix.mt6789.so
 vendor/lib64/hw/audio.usb.default.so
 vendor/lib64/hw/vendor.mediatek.hardware.audio-impl.so
-vendor/lib64/libaconfig_storage_read_api_cc.so
 vendor/lib64/libaudiotoolkit_vendor.so
 vendor/lib64/libbluetooth_audio_session_aidl_mtk.so
 vendor/lib64/libbwc.so
