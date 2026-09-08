@@ -1940,7 +1940,7 @@ vendor/lib64/vendor.mediatek.hardware.camera.bgservice@1.0.so
 vendor/lib64/vendor.mediatek.hardware.camera.bgservice@1.1.so
 vendor/lib64/vendor.mediatek.hardware.camera.ccap@1.0.so
 vendor/lib64/vendor.mediatek.hardware.camera.frhandler@1.0.so
--vendor/lib64/vendor.mediatek.hardware.camera.isphal-V1-ndk.so
+vendor/lib64/vendor.mediatek.hardware.camera.isphal-V1-ndk.so
 vendor/lib64/vendor.mediatek.hardware.camera.isphal@1.0.so
 vendor/lib64/vendor.mediatek.hardware.camera.isphal@1.1.so
 vendor/lib64/vendor.mediatek.hardware.camera.postproc-V1-ndk.so
@@ -2081,7 +2081,7 @@ vendor/lib64/mt6789/libcam.iopipe.so
 vendor/lib64/mt6789/libcam.isptuning.so
 vendor/lib64/mt6789/libcam.pdtblgen.so
 vendor/lib64/mt6789/libcam.tuning.cache.so
--vendor/lib64/mt6789/libcam.utils.sensorprovider.so
+vendor/lib64/mt6789/libcam.utils.sensorprovider.so
 vendor/lib64/mt6789/libcam.vhdr.so
 vendor/lib64/mt6789/libcamalgo.eis.so
 vendor/lib64/mt6789/libcamalgo.fdft.so
@@ -2155,8 +2155,8 @@ vendor/lib64/mt6789/libmtkcam_fdvt.so
 vendor/lib64/mt6789/libmtkcam_featurepolicy.so
 vendor/lib64/mt6789/libmtkcam_featureutils.so
 vendor/lib64/mt6789/libmtkcam_fwkutils.so
--vendor/lib64/mt6789/libmtkcam_grallocutils.so
--vendor/lib64/mt6789/libmtkcam_hal_aidl_common.so
+vendor/lib64/mt6789/libmtkcam_grallocutils.so
+vendor/lib64/mt6789/libmtkcam_hal_aidl_common.so
 vendor/lib64/mt6789/libmtkcam_hal_aidl_device.so
 vendor/lib64/mt6789/libmtkcam_hal_aidl_provider.so
 vendor/lib64/mt6789/libmtkcam_hal_aidl_utils.so
