@@ -1557,7 +1557,6 @@ vendor/bin/thermal_core
 vendor/bin/thermal_intf
 vendor/bin/tidad_mitee
 vendor/bin/touch_boost
-vendor/bin/trusty-ut-ctrl
 vendor/bin/uart_launcher
 vendor/bin/userdata_setup
 vendor/bin/vendor.xiaomi.hardware.otrpagent2
@@ -2338,7 +2337,6 @@ vendor/lib64/libtida_mitee.so
 vendor/lib64/libtranslator_mapi_v3.0.so
 vendor/lib64/libtranslator_mdmi_v2.8.2.so
 vendor/lib64/libtranslator_utils.so
-vendor/lib64/libtrusty.so
 vendor/lib64/libultrahdr.so
 vendor/lib64/libultrahdr_mtk.so
 vendor/lib64/libvcodec_oal.so
