@@ -417,9 +417,6 @@ vendor/lib/libudf.so
 vendor/lib/vendor.mediatek.hardware.pq_aidl-V7-ndk.so
 vendor/lib64/mt6789/gc05a2_truly_front_mipi_raw_IdxMgr.so
 vendor/lib64/mt6789/gc08a8_truly_main_mipi_raw_IdxMgr.so
-vendor/lib64/mt6789/libcamdrv_isp.so
-vendor/lib64/mt6789/libcamdrv_tuning_mgr.so
-vendor/lib64/mt6789/libcamdrv_twin.so
 vendor/lib64/mt6789/libfeatureiodrv_mem.so
 vendor/lib64/mt6789/libmml.so
 vendor/lib64/mt6789/libpq_sec.so
@@ -501,7 +498,6 @@ vendor/lib64/libTrueSight.so
 vendor/lib64/libaaa_flickerutil.so
 vendor/lib64/libanc_night.so
 vendor/lib64/libanc_night_preview.so
-vendor/lib64/libcamera_scene.so
 vendor/lib64/libged.so
 vendor/lib64/libgralloc_extra.so
 vendor/lib64/libgz_uree.so
@@ -515,7 +511,6 @@ vendor/lib64/libmialgo_sd.so
 vendor/lib64/libmorpho_HdrChecker.so
 vendor/lib64/libmorpho_ImageRefiner.so
 vendor/lib64/libmorpho_video_stabilizer.so
-vendor/lib64/libmtkisp_metadata_V3.so
 vendor/lib64/libpqhdrmetaparser.so
 vendor/lib64/libpqsharememory.so
 vendor/lib64/libpqtuning.so
@@ -1520,9 +1515,7 @@ vendor/lib/libh264dec_sd.ca7.so
 vendor/lib/libh264dec_se.ca7.so
 vendor/lib/libhevce_sb.ca7.android.so
 vendor/lib/libicd_decoder.so
-vendor/lib/libimgsensorca.so
 vendor/lib/libimgsys_osal.so
-vendor/lib/libispcameraca.so
 vendor/lib/libkeystore-wifi-hidl.so
 vendor/lib/libmbrainSDKv.so
 vendor/lib/libmfido_mitee.so
@@ -1750,10 +1743,8 @@ vendor/lib64/libhevce_sb.ca7.android.so
 vendor/lib64/libhfmanagerwrapper.so
 vendor/lib64/libicd_decoder.so
 vendor/lib64/libifcutils_mtk.so
-vendor/lib64/libimgsensorca.so
 vendor/lib64/libimgstream_sync.so
 vendor/lib64/libimgsys_osal.so
-vendor/lib64/libispcameraca.so
 vendor/lib64/libkeystore-wifi-hidl.so
 vendor/lib64/libmbrainSDKv.so
 vendor/lib64/libmcve.so
@@ -1777,9 +1768,6 @@ vendor/lib64/libmtk-fusion-ril-prop-vsim.so
 vendor/lib64/libmtk-ril.so
 vendor/lib64/libmtkgpuserv.so
 vendor/lib64/libmtkgpuservsdk_vendor.so
-vendor/lib64/libmtkisp_metadata_v2.so
-vendor/lib64/libmtkisp_metadata_v3.so
-vendor/lib64/libmtkisp_metadata_v3_12.so
 vendor/lib64/libmtklimiter_vendor.so
 vendor/lib64/libmtkmipc-ril.so
 vendor/lib64/libmtknetcap.so
