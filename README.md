@@ -476,8 +476,10 @@ Still open: see TODO.
       deleted (the `vendor/etc/sensors/hals.conf` blob owns that path since the
       Round-18 sensors rework). Still parked/not-in-dump: `powerhint.json`,
       `aurisys_config_rv.xml`, `passpointProfile.conf`, `thermal_info_config.json`.
-- [ ] `configs/vintf/manifest.xml` + `compatibility_matrix.xml` — verify against
-      `vendor/etc/vintf/*` from the dump.
+- [x] `configs/vintf/manifest.xml` — verified: the `<hal>` name set is identical
+      to `dump-ota/vendor/etc/vintf/manifest.xml` (only the header comment
+      differs). No `DEVICE_MATRIX_FILE` by design (stock's needs the unbuilt
+      `mediatek-common` jar).
 - [ ] `modules.load.recovery` currently mirrors `modules.load.vendor_ramdisk`;
       carve the real recovery fragment with `unpack_bootimg --format=mkbootimg`
       if recovery misbehaves.
