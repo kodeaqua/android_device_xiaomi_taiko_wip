@@ -1953,7 +1953,6 @@ vendor/lib/libispcameraca.so
 vendor/lib/libkeystore-wifi-hidl.so
 vendor/lib/libmbrainSDKv.so
 vendor/lib/libmfido_mitee.so
-vendor/lib/libminiui.so
 vendor/lib/libmisound.so
 vendor/lib/libmisoundcrossfade.so
 vendor/lib/libmlipay_mitee.so
@@ -2217,7 +2216,6 @@ vendor/lib64/libmialgo_utils.so
 vendor/lib64/libmialgoengine.so
 vendor/lib64/libmialgoengine2.so
 vendor/lib64/libmiface.so
-vendor/lib64/libminiui.so
 vendor/lib64/libmiriskmanager_mitee.so
 vendor/lib64/libmisound.so
 vendor/lib64/libmisoundcrossfade.so
