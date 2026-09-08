@@ -66,6 +66,16 @@ blob_fixups: blob_fixups_user_type = {
     "vendor/etc/init/android.hardware.neuralnetworks-shim-service-mtk.rc": blob_fixup().regex_replace(
         "start ", "enable "
     ),
+    # Microtrust mitee: libmt_mitee links keymint-V3-ndk (blob era), but the
+    # source keymint utils on lineage-23.2 are V4 -> "multiple versions of the
+    # same aidl_interface". keymint V4 is a superset, and libmt_mitee is a
+    # client, so bump the NEEDED to V4.
+    "vendor/lib64/libmt_mitee.so": blob_fixup()
+    .patchelf_version(patchelf_version)
+    .replace_needed(
+        "android.hardware.security.keymint-V3-ndk.so",
+        "android.hardware.security.keymint-V4-ndk.so",
+    ),
 }  # fmt: skip
 
 module = ExtractUtilsModule(
