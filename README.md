@@ -111,6 +111,16 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 16 — framework compat matrix path
+
+`module "framework_compatibility_matrix.device.xml" ... source path
+"vendor/lineage/config/device_framework_matrix.xml" does not exist`. The seed
+`BoardConfig.mk` (copied from yunluo) hard-listed the Lineage-internal matrix in
+`DEVICE_FRAMEWORK_COMPATIBILITY_MATRIX_FILE` with `:=`. `vendor/lineage/config/
+common.mk` already appends that file itself; re-listing it (a) breaks bootstrap
+if the path moves and (b) `:=` clobbers the Lineage + AOSP defaults. Fix: `+=`
+with only `hardware/mediatek/vintf/mediatek_framework_compatibility_matrix.xml`.
+
 ### Round 15 — graphics.common V6 -> V7 AIDL skew
 
 `module "libgpud" / "hwcomposer.mtk_common" ... depends on multiple versions of

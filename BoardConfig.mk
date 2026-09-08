@@ -295,9 +295,12 @@ DEVICE_MANIFEST_FILE := $(CONFIGS_PATH)/vintf/manifest.xml
 # vendor.mediatek.hardware.mbrainj) that only exist when the mediatek-common
 # framework jar is built - we do not build it. LineageOS' default device
 # compatibility matrix is used instead (OTA-time check only).
-DEVICE_FRAMEWORK_COMPATIBILITY_MATRIX_FILE := \
-    hardware/mediatek/vintf/mediatek_framework_compatibility_matrix.xml \
-    vendor/lineage/config/device_framework_matrix.xml
+# Append only our device-specific matrix. vendor/lineage/config/common.mk adds
+# its own vendor/lineage/config/device_framework_matrix.xml itself - do NOT
+# re-list it here ('does not exist' at soong bootstrap if the path ever moves,
+# and ':=' would clobber the Lineage + AOSP defaults).
+DEVICE_FRAMEWORK_COMPATIBILITY_MATRIX_FILE += \
+    hardware/mediatek/vintf/mediatek_framework_compatibility_matrix.xml
 
 # -----------------------------------------------------------------------------
 # SELinux
