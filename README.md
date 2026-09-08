@@ -111,6 +111,16 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 21 — build-generated aconfig / release-flag files
+
+`Makefile:148: error: overriding commands for target
+'.../vendor/etc/aconfig/flag.info', previously defined at
+build/make/core/packaging/flags.mk:168`. The aconfig feature-flag files and the
+release-config flag dump are **generated per partition by the build** from the
+tree's `.aconfig` declarations - never blobs. Dropped:
+`vendor/etc/aconfig/{flag.info,flag.map,flag.val,package.map}`,
+`vendor/etc/aconfig_flags.pb`, `vendor/etc/build_flags.json`.
+
 ### Round 20 — kati "overriding commands for target" (same install path)
 
 `installs-lineage_taiko.mk: error: overriding commands for target

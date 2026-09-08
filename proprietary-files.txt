@@ -1077,10 +1077,6 @@ vendor/bin/vsimd_mitee
 vendor/bin/wallpapercolor_bin
 vendor/bin/wifi_dump
 vendor/bin/wifitest
-vendor/etc/aconfig/flag.info
-vendor/etc/aconfig/flag.map
-vendor/etc/aconfig/flag.val
-vendor/etc/aconfig/package.map
 vendor/etc/aidl/hfp/hfp_codec_capabilities.xml_mtk
 vendor/etc/aidl/le_audio/aidl_audio_set_configurations.bfbs_mtk
 vendor/etc/aidl/le_audio/aidl_audio_set_scenarios.bfbs_mtk
@@ -1208,7 +1204,6 @@ vendor/etc/META_dynamic.ds
 vendor/etc/MNL_Config.xml
 vendor/etc/VideoLog_dynamic.ds
 vendor/etc/_mi.xml
-vendor/etc/aconfig_flags.pb
 vendor/etc/aee-commit
 vendor/etc/aee-config
 vendor/etc/audio_device.xml
@@ -1222,7 +1217,6 @@ vendor/etc/boringssl_self_test.zygote32.rc
 vendor/etc/boringssl_self_test.zygote64.rc
 vendor/etc/boringssl_self_test.zygote64_32.rc
 vendor/etc/breakwhiteapplist.xml
-vendor/etc/build_flags.json
 vendor/etc/cgroups.json
 vendor/etc/command.csv
 vendor/etc/cust_color_dsi_o84_35_02_0b_dsc_vdo.xml
