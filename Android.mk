@@ -39,6 +39,7 @@ MTK_SOC_SYMLINKS := \
     $(TARGET_OUT_VENDOR)/lib/libmml.so \
     $(TARGET_OUT_VENDOR)/lib/libmmlpqImpl.so \
     $(TARGET_OUT_VENDOR)/lib/libmnl.so \
+    $(TARGET_OUT_VENDOR)/lib/libmtk_drvb.so \
     $(TARGET_OUT_VENDOR)/lib/libmtk_mali_user.so \
     $(TARGET_OUT_VENDOR)/lib/libneuron_adapter_mgvi.so \
     $(TARGET_OUT_VENDOR)/lib/libpq_cust_base.so \
@@ -64,16 +65,13 @@ MTK_SOC_SYMLINKS := \
     $(TARGET_OUT_VENDOR)/lib64/libarm_egl_properties_sysprop.so \
     $(TARGET_OUT_VENDOR)/lib64/libarm_gralloc_properties_sysprop.so \
     $(TARGET_OUT_VENDOR)/lib64/libarm_mali_config_sysprops.so \
-    $(TARGET_OUT_VENDOR)/lib64/libcamdrv_isp.so \
-    $(TARGET_OUT_VENDOR)/lib64/libcamdrv_tuning_mgr.so \
-    $(TARGET_OUT_VENDOR)/lib64/libcamdrv_twin.so \
-    $(TARGET_OUT_VENDOR)/lib64/libfeatureiodrv_mem.so \
     $(TARGET_OUT_VENDOR)/lib64/libgpudataproducer.so \
     $(TARGET_OUT_VENDOR)/lib64/libhdrvideo.so \
     $(TARGET_OUT_VENDOR)/lib64/libmmagent.so \
     $(TARGET_OUT_VENDOR)/lib64/libmml.so \
     $(TARGET_OUT_VENDOR)/lib64/libmmlpqImpl.so \
     $(TARGET_OUT_VENDOR)/lib64/libmnl.so \
+    $(TARGET_OUT_VENDOR)/lib64/libmtk_drvb.so \
     $(TARGET_OUT_VENDOR)/lib64/libmtk_mali_user.so \
     $(TARGET_OUT_VENDOR)/lib64/libneuron_adapter_mgvi.so \
     $(TARGET_OUT_VENDOR)/lib64/libneuron_runtime.6.so \
