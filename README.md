@@ -108,8 +108,8 @@ and lists blobs with missing `NEEDED` libs — add `blob_fixups` and re-extract.
 ## Status (2026-09-08)
 
 Pushed to `kodeaqua/android_device_xiaomi_taiko_wip` `lineage-23.2`. Passed
-soong bootstrap + kati (32 fix rounds, logged below); **compiling under ninja**
-(reached ~14%, `file_contexts.device`, before the Round 32 fix).
+soong bootstrap + kati (33 fix rounds, logged below); **compiling under ninja**
+(reached ~2-14%, blob `.rc` `host_init_verifier`, before the Round 33 fix).
 Build runs on a separate machine — errors are pasted in and fixed here. Camera
 enabled; `configs/audio|media|wifi` = taiko's own; `BOARD_SUPER_PARTITION_SIZE`
 = 11 GiB from the scatter. See the workspace `../../../CLAUDE.md` "Build status"
@@ -120,6 +120,27 @@ for the fix-class cheat sheet.
 Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
+
+### Round 33 — `host_init_verifier`: blob service with no `user`
+
+`Copy init script ... vendor.xiaomi.hw.touchfeature-service.rc`:
+`host_init_verifier: ... 149: No user specified for service
+'touch-kmsg-init-sh', so it would have been root. Failed to parse init
+scripts with 1 error(s).`
+
+Android 16's `host_init_verifier` (run on every installed `*.rc` via the
+`prebuilt_etc` copy rule) **errors** on a service with no explicit `user` line
+(older releases only warned). The stock touchfeature rc leaves
+`touch-kmsg-init-sh` implicit-root; its sibling `panel-info-sh` (same file, same
+`seclabel u:r:vendor_touch_init_shell:s0`) sets `user root`.
+
+`extract-files.py` `blob_fixups` `regex_replace` on
+`vendor/etc/init/vendor.xiaomi.hw.touchfeature-service.rc` inserts `user root`
+into that one service block. A full-tree scan of the extracted blob `.rc` set
+(services with no `user:` line) found this as the only one. The already-extracted
+`vendor/xiaomi/taiko/...` copy was patched in place too so the in-flight build
+continues without a re-extract; a fresh `./extract-files.py <ota.zip>` reproduces
+it from the fixup.
 
 ### Round 32 — device `file_contexts` re-labels an MTK-base path
 

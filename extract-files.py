@@ -66,6 +66,15 @@ blob_fixups: blob_fixups_user_type = {
     "vendor/etc/init/android.hardware.neuralnetworks-shim-service-mtk.rc": blob_fixup().regex_replace(
         "start ", "enable "
     ),
+    # A16 host_init_verifier is strict: a service with no `user` line is an
+    # error ("No user specified for service ... so it would have been root").
+    # The stock touchfeature rc leaves touch-kmsg-init-sh implicit-root while
+    # its sibling panel-info-sh (same file, same seclabel) sets `user root`.
+    # Make it explicit.
+    "vendor/etc/init/vendor.xiaomi.hw.touchfeature-service.rc": blob_fixup().regex_replace(
+        "    class main\n    group root system\n    oneshot\n    seclabel u:r:vendor_touch_init_shell:s0",
+        "    class main\n    user root\n    group root system\n    oneshot\n    seclabel u:r:vendor_touch_init_shell:s0",
+    ),
     # Microtrust mitee: libmt_mitee links keymint-V3-ndk (blob era), but the
     # source keymint utils on lineage-23.2 are V4 -> "multiple versions of the
     # same aidl_interface". keymint V4 is a superset, and libmt_mitee is a
