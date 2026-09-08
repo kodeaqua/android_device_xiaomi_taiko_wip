@@ -62,5 +62,4 @@ ro.multiwin.fulldecor_support=true
 ro.nnapi.extensions.deny_on_product=true
 ro.rom.zone=2
 ro.secureboot.devicelock=1
-ro.system_ext.build.version.sdk_full=36.0
 

@@ -108,7 +108,8 @@ and lists blobs with missing `NEEDED` libs — add `blob_fixups` and re-extract.
 ## Status (2026-09-08)
 
 Pushed to `kodeaqua/android_device_xiaomi_taiko_wip` `lineage-23.2`. Passed
-soong bootstrap + kati (25 fix rounds, logged below); **compiling under ninja**.
+soong bootstrap + kati (30 fix rounds, logged below); **compiling under ninja**
+(reached `//build/soong:product-build.prop`, ~2%, before the Round 30 prop fix).
 Build runs on a separate machine — errors are pasted in and fixed here. Camera
 enabled; `configs/audio|media|wifi` = taiko's own; `BOARD_SUPER_PARTITION_SIZE`
 = 11 GiB from the scatter. See the workspace `../../../CLAUDE.md` "Build status"
@@ -119,6 +120,42 @@ for the fix-class cheat sheet.
 Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
+
+### Round 30 — dump props colliding with Soong `gen_build_prop` output
+
+`gen_build_prop --partition=product ...` → `post_process_props`:
+`error: found duplicate sysprop assignments: ro.product.build.version.sdk_full=36.1
+/ =36.0` and `ro.config.notification_sound=unknown / =Argon.ogg`.
+
+`build/make/tools/post_process_props.py` `override_optional_props()` hard-errors
+when a prop has >1 non-optional (`=`, not `?=`) assignment **with differing
+values** (identical values are silently deduped, `?=` defers). The
+`configs/props/*.prop` files are HyperOS-dump output, and on Android 16 Soong's
+`gen_build_prop.py` now *generates* a swathe of `ro.*.build.*` / `ro.product.*`
+keys itself — feeding the dump's copies back in as input collides. Same class as
+Round 29.
+
+Removed the stale dump lines the build now owns:
+
+| prop | in | dump value | build (`gen_build_prop.py`) |
+|---|---|---|---|
+| `ro.build.version.sdk_full` | system.prop | `36.0` | `36.1` (trunk minor SDK) |
+| `ro.system.build.version.sdk_full` | system.prop | `36.0` | `36.1` |
+| `ro.system_ext.build.version.sdk_full` | system_ext.prop | `36.0` | `36.1` |
+| `ro.product.build.version.sdk_full` | product.prop | `36.0` | `36.1` |
+| `ro.vendor.build.version.sdk_full` | vendor.prop | `36.0` | `36.1` |
+| `ro.odm.build.version.sdk_full` | odm.prop | `36.0` | `36.1` |
+| `ro.config.notification_sound` | product.prop | `unknown` | `Argon.ogg` (`vendor/lineage/config/common_mobile.mk:13`, hard `=`, file copied to `/product`) |
+| `ro.vendor.build.ab_ota_partitions` | vendor.prop | `boot,product,system,vendor` | sorted 13-entry list from `AB_OTA_PARTITIONS` (`gen_build_prop.py:499`) — would fail at `vendor-build.prop` |
+
+Cross-checked every dump prop key against `gen_build_prop.py` +
+`sysprop_config.mk`. **Left alone** (build emits the *same* value → deduped, no
+error): `ro.product.page_size=4096`, `ro.product.build.16k_page.enabled=false`,
+`ro.product.cpu.pagesize.max=16384`, `ro.product.build.no_bionic_page_size_macro`,
+`ro.vendor.build.dont_use_vabc=true` (only emitted if `DontUseVabcOta`, which
+taiko doesn't set — the dump line is the sole provider; deliberate keep per
+Round 26). `ro.config.ringtone=unknown` stays: `full_base.mk` only sets it `?=`,
+so our `=` wins with no conflict (candidate for the post-boot MIUI-prop trim).
 
 ### Round 29 — legacy `PRODUCT_BUILD_PROP_OVERRIDES` keys
 
