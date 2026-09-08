@@ -50,6 +50,13 @@ The structural template is the proven **`dt_xiaomi_yunluo_redmipad1`** tree
 (Redmi Pad 1, same MT6789 platform, same vendor), updated for Android 16 /
 GKI 6.12 / system_dlkm / mi_ext.
 
+**Target branch: LineageOS 23.2.** yunluo is 23.0. `hardware/mediatek` 23.2 is a
+large refactor — see `CLAUDE.md` "LineageOS 23.2 deltas". Key consequences here:
+`proprietary-files.txt` had all `*.hbtf` sidecars and every source-colliding
+blob removed (those are rebuilt from `hardware/mediatek` via `device.mk`);
+`lib_driver_cmd_mt66xx` dropped from `BoardConfig.mk`; `overlay/mssi.mk`
+inherited.
+
 ## Layout
 
 ```

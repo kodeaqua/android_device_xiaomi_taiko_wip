@@ -283,12 +283,16 @@ include device/mediatek/sepolicy_vndr/SEPolicy.mk
 BOARD_VENDOR_SEPOLICY_DIRS += $(DEVICE_PATH)/sepolicy/vendor
 
 # -----------------------------------------------------------------------------
-# Wi-Fi (MediaTek connac, wmt) - Wi-Fi-only SKU
+# Wi-Fi (MediaTek connac / wmt) - Wi-Fi-only SKU
+#
+# lineage-23.2 note: hardware/mediatek dropped wpa_supplicant_8_lib, so
+# `lib_driver_cmd_mt66xx` no longer exists. wpa_supplicant / hostapd are taken
+# as blobs (proprietary-files.txt) -> no BOARD_WPA_SUPPLICANT_* build vars here.
+# Only the runtime driver paths (read by the framework) and the HAL-wrapper
+# knobs are set.
 # -----------------------------------------------------------------------------
+BOARD_WLAN_DEVICE := MediaTek
 WPA_SUPPLICANT_VERSION := VER_0_8_X
-BOARD_WPA_SUPPLICANT_DRIVER := NL80211
-BOARD_HOSTAPD_DRIVER := NL80211
-BOARD_WPA_SUPPLICANT_PRIVATE_LIB := lib_driver_cmd_mt66xx
 WIFI_DRIVER_FW_PATH_PARAM := "/dev/wmtWifi"
 WIFI_DRIVER_FW_PATH_STA := "STA"
 WIFI_DRIVER_FW_PATH_AP := "AP"

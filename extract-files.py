@@ -19,6 +19,12 @@ from extract_utils.main import (
     ExtractUtilsModule,
 )
 
+# LineageOS 23.2: proprietary-files.txt has already been pruned of every blob
+# whose module name collides with a hardware/mediatek source module (see its
+# header). Do NOT re-add libmtkperf_client_vendor / libperfctl_vendor /
+# libpowerhalwrap_vendor / libaedv / libladder / chipinfo / wlan_assistant /
+# vendor.mediatek.hardware.mtkpower@1.x / memtrack-service.mediatek /
+# thermal-service.mediatek here or in the pinned list.
 namespace_imports = [
     "device/xiaomi/taiko",
     "hardware/mediatek",

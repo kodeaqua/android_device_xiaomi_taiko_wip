@@ -75,12 +75,39 @@ PRODUCT_PACKAGES += \
     create_pl_dev.recovery
 
 # -----------------------------------------------------------------------------
-# Power - core android.hardware.power is NOT in the blob set (only the
-# mtkpower vendor extension is), so use the Lineage/pixel libperfmgr HAL.
+# MediaTek common — build from source (hardware/mediatek, lineage-23.2)
+#
+# These module NAMES also exist as prebuilts in the stock firmware. Soong
+# registers every module in the tree, so keeping both the blob and the source
+# module = "multiple modules named ..." hard error. The blobs have been removed
+# from proprietary-files.txt (see its header) and are rebuilt here instead.
+# Everything else stays blob-first.
 # -----------------------------------------------------------------------------
 PRODUCT_PACKAGES += \
-    android.hardware.power-service.pixel-libperfmgr \
-    libmtkperf_client_vendor
+    libmtkperf_client_vendor \
+    libperfctl_vendor \
+    libpowerhalwrap_vendor \
+    libaedv \
+    libladder \
+    chipinfo \
+    wlan_assistant \
+    libwifi-hal-wrapper \
+    vendor.mediatek.hardware.mtkpower@1.2 \
+    android.hardware.memtrack-service.mediatek \
+    android.hardware.thermal-service.mediatek \
+    thermal_symlinks_mediatek
+
+# MediaTek Mssi RRO overlays (wifi/framework capability flags per SoC).
+# mssi.mk filters by TARGET_BOARD_PLATFORM; for mt6789 it adds only
+# MssiFrameworkOverlay / MssiNetworkStackOverlay / MssiWifiOverlay.
+$(call inherit-product, hardware/mediatek/overlay/mssi.mk)
+
+# -----------------------------------------------------------------------------
+# Power - no core android.hardware.power blob (only the mtkpower vendor
+# extension), so use the Lineage/pixel libperfmgr HAL.
+# -----------------------------------------------------------------------------
+PRODUCT_PACKAGES += \
+    android.hardware.power-service.pixel-libperfmgr
 
 PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/configs/powerhint.json:$(TARGET_COPY_OUT_VENDOR)/etc/powerhint.json
