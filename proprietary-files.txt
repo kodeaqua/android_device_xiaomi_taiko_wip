@@ -1081,15 +1081,10 @@ vendor/etc/aconfig/flag.info
 vendor/etc/aconfig/flag.map
 vendor/etc/aconfig/flag.val
 vendor/etc/aconfig/package.map
-vendor/etc/aidl/hfp/hfp_codec_capabilities.xml
 vendor/etc/aidl/hfp/hfp_codec_capabilities.xml_mtk
-vendor/etc/aidl/le_audio/aidl_audio_set_configurations.bfbs
 vendor/etc/aidl/le_audio/aidl_audio_set_configurations.bfbs_mtk
-vendor/etc/aidl/le_audio/aidl_audio_set_scenarios.bfbs
 vendor/etc/aidl/le_audio/aidl_audio_set_scenarios.bfbs_mtk
-vendor/etc/aidl/le_audio/aidl_default_audio_set_configurations.json
 vendor/etc/aidl/le_audio/aidl_default_audio_set_configurations.json_mtk
-vendor/etc/aidl/le_audio/aidl_default_audio_set_scenarios.json
 vendor/etc/apdb/APDB_MT6789___W2532
 vendor/etc/apdb/APDB_MT6789___W2532_ENUM
 vendor/etc/gralloc/cam.xml
@@ -1187,7 +1182,6 @@ vendor/etc/seccomp_policy/mediaextractor.policy
 vendor/etc/seccomp_policy/mediaswcodec.policy
 vendor/etc/vintf/manifest/CommandService.xml
 vendor/etc/vintf/manifest/FastSwitch.xml
-vendor/etc/vintf/manifest/bluetooth_audio.xml
 vendor/etc/vintf/manifest/dms-service.xml
 vendor/etc/vintf/manifest/dumpstate-xiaomi.xml
 vendor/etc/vintf/manifest/lights-mtk-default.xml

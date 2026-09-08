@@ -111,6 +111,29 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 20 — kati "overriding commands for target" (same install path)
+
+`installs-lineage_taiko.mk: error: overriding commands for target
+'.../vendor/etc/vintf/manifest/bluetooth_audio.xml', previously defined at ...`.
+Not a module-name clash (Rounds 18-19) but an **install-path** clash - a blob
+`prebuilt_etc` and an AOSP `hardware/interfaces` `prebuilt_etc`/`vintf_fragment`
+(`vendor: true`) both emit the same `out/.../vendor/etc/...` file. HyperOS ships
+these AOSP config files verbatim. Dropped from `proprietary-files.txt` (AOSP
+source installs identical content to the same path):
+
+- `vintf/manifest/bluetooth_audio.xml` (`android.hardware.bluetooth.audio` V5
+  `IBluetoothAudioProviderFactory/default` - byte-identical to
+  `bluetooth/audio/aidl/default/bluetooth_audio.xml`).
+- `aidl/hfp/hfp_codec_capabilities.xml`,
+  `aidl/le_audio/aidl_audio_set_{configurations,scenarios}.bfbs`,
+  `aidl/le_audio/aidl_default_audio_set_{configurations,scenarios}.json` - from
+  `bluetooth/audio/utils`. Kept the `*_mtk` copies (distinct install names).
+
+A full-tree scan of every `prebuilt_etc`/`vintf_fragment` install path in
+`hardware/interfaces` + `hardware/mediatek` vs the blob list found no other
+install-path collisions (`audio_effects_config.xml` shares a path but the AOSP
+module is `enabled: false` by default).
+
 ### Round 19 — more kati "already defined": AOSP test/passthrough/legacy blobs
 
 `hardware/libhardware/tests/nusensors: MODULE.TARGET.EXECUTABLES.test-nusensors
