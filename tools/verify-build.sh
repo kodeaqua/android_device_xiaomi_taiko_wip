@@ -272,6 +272,20 @@ kmod(){ local d="$OUT/$1" ml="$OUT/$1/modules.load"
 }
 kmod vendor_dlkm/lib/modules  "vendor_dlkm"
 kmod system_dlkm/lib/modules  "system_dlkm"
+# /vendor/lib/modules must resolve to vendor_dlkm's modules: init.insmod.sh +
+# many init*.rc do `insmod /vendor/lib/modules/*.ko` / modprobe from
+# /vendor/lib/modules. Stock ships it as a symlink -> /vendor_dlkm/lib/modules.
+vlm="$OUT/vendor/lib/modules"
+if [ -L "$vlm" ]; then
+  tgt=$(readlink "$vlm")
+  [ -e "$vlm/modules.load" ] && pass "vendor/lib/modules -> $tgt (resolves, has modules.load)" \
+    || fail "vendor/lib/modules -> $tgt but the target has no modules.load"
+elif [ -d "$vlm" ]; then
+  ls -1 "$vlm"/*.ko >/dev/null 2>&1 && pass "vendor/lib/modules is a real dir with .ko" \
+    || fail "vendor/lib/modules is an EMPTY real dir - init.insmod.sh / init*.rc load nothing from vendor_dlkm (Wi-Fi/thermal/charger/sensors modules dead). Need a build symlink -> /vendor_dlkm/lib/modules."
+else
+  fail "vendor/lib/modules MISSING - init.insmod.sh reads /vendor/lib/modules; vendor_dlkm's $(ls -1 "$OUT/vendor_dlkm/lib/modules"/*.ko 2>/dev/null | wc -l) modules won't load. Add a symlink -> /vendor_dlkm/lib/modules."
+fi
 # vendor_boot ramdisk .ko: pick the dir that actually has the most .ko
 vrd=$(find "$OUT" -type d \( -path '*vendor_ramdisk*modules*' -o -path '*VENDOR_RAMDISK*' \) 2>/dev/null \
       | while read -r d; do echo "$(find "$d" -maxdepth 1 -name '*.ko' | wc -l) $d"; done \
