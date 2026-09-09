@@ -122,6 +122,29 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 44 — blanket `DISABLE_CHECKELF` the camera blob cluster
+
+Rounds 36-43 whittled `check_elf_file` failures one/few at a time; Round 44 was
+another (`libmtkcam_custom.sensorprovider` -> undefined `NSCam::Thread::
+getThisThreadId()`). The MTK ISP6s + Xiaomi MiCam blob set (~180 libs) is one
+mutually-referencing web of `NSCam::` / `NS3Av3::` / `NSIspTuning::` symbols
+spread across dozens of libs; `check_elf_file`'s per-module `--shared-lib`
+closure never contains every sibling, so it will keep flagging cross-lib
+`NSCam::` symbols indefinitely. Every MTK LineageOS tree blanket-disables its
+camera cluster for exactly this (yunluo included).
+
+`readelf`-swept + name-matched every camera lib in `proprietary-files.txt`
+(`lib3a.*`, `libcam.*`, `libmtkcam*`, `libcameracustom*`, `libcamalgo*`,
+`libfeature_*`, `libdip*`, `libimageio*`, `libanc_*`, `libmialgo*`, `hq_algo*`,
+`*_imgsensor*`, `*mipi_raw*`, `*Pdaf*`, the MTK camera AIDL sub-HAL impls, …) and
+`;DISABLE_CHECKELF`'d all 184. Verified the sweep touched **no** audio / wifi /
+display / bluetooth / keymint / composer / gralloc core lib. Total
+`DISABLE_CHECKELF` lines: 265.
+
+This is purely a build-time check bypass - it doesn't change the blobs or the
+Round 17 camera-common downgrade / Round 43 orphan drop. Camera correctness is
+still a first-boot task.
+
 ### Round 43 — drop the 2 genuinely-orphaned camera libs (narrowed from Round 42)
 
 Follow-up analysis of the Round 42 set: of the 52 libs with undefined
