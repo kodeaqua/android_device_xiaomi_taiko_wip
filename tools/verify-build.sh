@@ -393,8 +393,10 @@ fi
 
 # ---------------------------------------------------------------------------
 if [ "$FLASH" -eq 1 ]; then
-  sec "Flash recipe (unlocked bootloader, both slots)"
+  sec "Flash recipe (unlocked bootloader)"
+  have_super=0; [ -s "$OUT/super.img" ] && have_super=1
   cat <<EOF
+  # --- 1. boot chain, both slots (from fastboot / bootloader mode) ---
   fastboot flash boot_a        "$OUT/boot.img"
   fastboot flash boot_b        "$OUT/boot.img"
   fastboot flash vendor_boot_a "$OUT/vendor_boot.img"
@@ -405,11 +407,24 @@ if [ "$FLASH" -eq 1 ]; then
   fastboot flash vbmeta_b         "$OUT/vbmeta.img"        --disable-verity --disable-verification
   fastboot flash vbmeta_system_a  "$OUT/vbmeta_system.img" --disable-verity --disable-verification
   fastboot flash vbmeta_vendor_a  "$OUT/vbmeta_vendor.img" --disable-verity --disable-verification
-  fastboot reboot fastboot
-  fastboot flash super         "$OUT/super.img"     # or: fastboot update "$imgz"
-  fastboot -w reboot                                # -w wipes userdata (first flash)
-  # first boot: adb wait-for-device && adb shell dmesg | grep -i 'avc: denied' ; adb logcat -b all
 EOF
+  if [ "$have_super" -eq 1 ]; then cat <<EOF
+  # --- 2. super, then wipe + boot ---
+  fastboot reboot fastboot
+  fastboot flash super         "$OUT/super.img"
+  fastboot -w reboot
+EOF
+  else cat <<EOF
+  # --- 2. no super.img built - install the payload via LineageOS recovery ---
+  #     (recovery rides in vendor_boot; there is no recovery partition)
+  fastboot reboot recovery
+  #  in recovery: Apply Update -> Apply from ADB
+  adb sideload "$z"
+  #  then: Factory reset -> Format data/factory reset, Reboot system
+  #  (or build a flashable super: 'mka superimage' -> $OUT/super.img, use branch above)
+EOF
+  fi
+  echo "  # first boot: adb wait-for-device && adb shell dmesg | grep -i 'avc: denied' ; adb logcat -b all"
 fi
 
 # ---------------------------------------------------------------------------
