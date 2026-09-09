@@ -1933,9 +1933,7 @@ vendor/lib64/libcamera_scene.so
 vendor/lib64/libimgsensorca.so
 vendor/lib64/libispcameraca.so
 vendor/lib64/libmtkcam.MITPS.so
-vendor/lib64/libmtkcam.mcsspolicy.so;DISABLE_CHECKELF
 vendor/lib64/libmtkcam.uievent.so
-vendor/lib64/libmtkcam_capture_request_monitor.so;DISABLE_CHECKELF
 vendor/lib64/libmtkcam_custom.security.so
 vendor/lib64/libmtkcam_custom.sensorprovider.so
 vendor/lib64/libmtkcam_hal_custom_utils.so

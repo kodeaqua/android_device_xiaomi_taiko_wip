@@ -122,6 +122,26 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 43 — drop the 2 genuinely-orphaned camera libs (narrowed from Round 42)
+
+Follow-up analysis of the Round 42 set: of the 52 libs with undefined
+`NSCam::IMetadata` symbols, only **two** actually reference the *template* API
+(`push_back<int,uchar>`, `getEntry<int>`, `setEntry<T>`, `itemAt<int>` — GLOBAL,
+not WEAK, so hard `dlopen` failures): `libmtkcam.mcsspolicy.so` and
+`libmtkcam_capture_request_monitor.so`. The other 50 use the plain overload API
+that our `libmtkcam_metadata.so` blob provides — they're fine, the Round 42
+`;DISABLE_CHECKELF` on them is just belt-and-braces (yunluo blanket-disables its
+camera cluster too).
+
+`readelf -d` across the whole extracted vendor tree: **nothing** DT_NEEDED-links
+or even string-references those two — they're `dlopen`-by-name plugins (pipeline
+MCSS policy / a capture-request debug monitor) with no in-vendor consumer (a
+MiCam APK would load them). Dropped both from `proprietary-files.txt`. The core
+camera stack is now metadata-ABI-consistent (old overload API throughout). No
+`hardware/mediatek` camera source exists to relink against; this dump ships only
+the old-API `libmtkcam_metadata`, so those two Xiaomi plugins (built against a
+newer SDK-drop header) simply can't be carried.
+
 ### Round 42 — `check_elf_file`: MTK camera `NSCam::IMetadata` template ABI split (52 blobs)
 
 `libmtkcam.mcsspolicy` / `libmtkcam_capture_request_monitor` (+ 50 more camera
