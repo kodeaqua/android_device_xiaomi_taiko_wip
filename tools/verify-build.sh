@@ -278,8 +278,15 @@ kmod system_dlkm/lib/modules  "system_dlkm"
 vlm="$OUT/vendor/lib/modules"
 if [ -L "$vlm" ]; then
   tgt=$(readlink "$vlm")
-  [ -e "$vlm/modules.load" ] && pass "vendor/lib/modules -> $tgt (resolves, has modules.load)" \
-    || fail "vendor/lib/modules -> $tgt but the target has no modules.load"
+  # AOSP auto-creates this as -> /vendor_dlkm/lib/modules when
+  # BOARD_USES_VENDOR_DLKMIMAGE=true. The target is an absolute *device* path
+  # that won't resolve on the build host, so accept it by name.
+  case "$tgt" in
+    /vendor_dlkm/lib/modules|../../../vendor_dlkm/lib/modules)
+      pass "vendor/lib/modules -> $tgt (device path - resolves on-device)" ;;
+    *) [ -e "$vlm/modules.load" ] && pass "vendor/lib/modules -> $tgt (resolves)" \
+         || warn "vendor/lib/modules -> $tgt : unusual target, verify it reaches vendor_dlkm's modules.load on-device" ;;
+  esac
 elif [ -d "$vlm" ]; then
   ls -1 "$vlm"/*.ko >/dev/null 2>&1 && pass "vendor/lib/modules is a real dir with .ko" \
     || fail "vendor/lib/modules is an EMPTY real dir - init.insmod.sh / init*.rc load nothing from vendor_dlkm (Wi-Fi/thermal/charger/sensors modules dead). Need a build symlink -> /vendor_dlkm/lib/modules."
