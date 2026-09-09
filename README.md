@@ -122,6 +122,20 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 39 — `check_elf_file`: `libmcve` versioned `AHardwareBuffer_*@LIBNATIVEWINDOW`
+
+`//vendor/xiaomi/taiko:libmcve check elf file`: `error: Unresolved symbol:
+AHardwareBuffer_{allocate,lock,release,unlock}@LIBNATIVEWINDOW`.
+
+`libmcve.so` (MTK video-encode lib) references these NDK gralloc APIs with the
+bare `LIBNATIVEWINDOW` symbol-version tag; lineage-23.2's `libnativewindow.so`
+(in the `--shared-lib` list) exports them under a newer version node, so
+`check_elf_file`'s versioned lookup misses. The unversioned
+`AHardwareBuffer_getNativeHandle` in the same lib resolves fine, as do all its
+`@LIBC` refs. `AHardwareBuffer_*` are API-26 core NDK, present at runtime.
+`;DISABLE_CHECKELF` on the one line. (`libmiXmlParser` in the same batch only has
+`@LIBC`/`@LIBLOG` refs and passes.)
+
 ### Round 38 — `check_elf_file`: legacy `.ca7` SW video codecs, `__aeabi_*`
 
 `//vendor/xiaomi/taiko:libHEVCdec_sa.ca7.android check elf file [arm]`:

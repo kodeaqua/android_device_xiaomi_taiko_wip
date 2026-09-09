@@ -1666,7 +1666,7 @@ vendor/lib64/libimgstream_sync.so
 vendor/lib64/libimgsys_osal.so
 vendor/lib64/libkeystore-wifi-hidl.so
 vendor/lib64/libmbrainSDKv.so
-vendor/lib64/libmcve.so
+vendor/lib64/libmcve.so;DISABLE_CHECKELF
 vendor/lib64/libmfido_mitee.so
 vendor/lib64/libmialgo_ai_vision.so
 vendor/lib64/libmialgo_utils.so
