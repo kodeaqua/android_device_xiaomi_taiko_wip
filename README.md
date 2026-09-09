@@ -122,6 +122,25 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 42 — `check_elf_file`: MTK camera `NSCam::IMetadata` template ABI split (52 blobs)
+
+`libmtkcam.mcsspolicy` / `libmtkcam_capture_request_monitor` (+ 50 more camera
+libs): `error: Unresolved symbol: _ZN5NSCam9IMetadata6IEntry9push_backIihEE...`
+= `NSCam::IMetadata::IEntry::push_back<int,unsigned char>(...)` etc.
+
+Not a benign check_elf quirk this time: our `libmtkcam_metadata.so` blob exports
+the **non-template** overloads (`push_back(int const*, size_t, Type2Type<int>)`),
+while these consumers were compiled against a header where `push_back` /
+`getEntry` / `setEntry` / `itemAt` are **templates** (`push_back<T0,T1>`). HyperOS
+mixed a `libmtkcam_metadata` from one SDK drop with Xiaomi camera libs from
+another. A genuine intra-vendor ABI split — but camera is deferred (Path A), so
+`readelf`-swept every PF blob for undefined `NSCam::IMetadata` template syms and
+`;DISABLE_CHECKELF`'d all 52 in one pass (vs ~50 more one-at-a-time rounds). The
+provider `libmtkcam_metadata.so` is untouched. **Camera metadata read/write will
+likely fail at runtime** until the camera stack is realigned (matching
+`libmtkcam_metadata` blob / newer dump / drop `mcsspolicy`+`capture_request_
+monitor`) - a post-boot camera task, not a boot blocker.
+
 ### Round 41 — proactively adopt yunluo's `DISABLE_CHECKELF` set
 
 Rounds 36-40 were one-at-a-time `check_elf_file` failures on quirky MTK/Xiaomi
