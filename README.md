@@ -126,22 +126,29 @@ all logged below.
 
 **First real-hardware flash attempt made** (2026-09-09): `boot`/`vendor_boot`/
 `dtbo`, then `vbmeta*` with `--disable-verity --disable-verification` (both
-slots) - device shows the bootloader splash then powers off, no recovery
-either. **Root cause found and fixed in-tree (Round 54, not yet rebuilt/
-reflashed)**: this device's bootloader loads vendor_boot's PLATFORM ramdisk
-fragment *alone* for a normal boot, and it has to be a complete standalone
-first-stage rootfs (confirmed against the sibling `taiko-twrp` tree, which
-hit and solved the identical bug on real hardware) - this build's own
-generated PLATFORM fragment isn't equivalent to stock's and panics
-(`Unable to mount root fs on /dev/ram`) before the fb console is even up,
-which is why nothing showed past the boot logo. Fixed by swapping in the
-real stock PLATFORM fragment (`prebuilt/vendor_ramdisk.cpio.lz4` +
-`build/tasks/vendor_boot.mk`) while keeping the RECOVERY fragment
-(LineageOS's own) unchanged. **Next: rebuild `vendor_boot.img` only, reflash
-both slots, retest `fastboot reboot recovery` first** - see Round 54 for the
-full writeup, then `adb shell dmesg | grep 'avc: denied'` + `adb logcat -b
-all` for the first-boot round (SELinux, camera, brightness curves, real AVB
-keys, trim `persist.miui.*`).
+slots) - device showed the bootloader splash then powered off, no recovery
+either. **Root cause found and fixed in-tree (Round 54)**: this device's
+bootloader loads vendor_boot's PLATFORM ramdisk fragment *alone* for a normal
+boot, and it has to be a complete standalone first-stage rootfs (confirmed
+against the sibling `taiko-twrp` tree, which hit and solved the identical bug
+on real hardware) - this build's own generated PLATFORM fragment isn't
+equivalent to stock's and panics (`Unable to mount root fs on /dev/ram`)
+before the fb console is even up, which is why nothing showed past the boot
+logo. Fixed by swapping in the real stock PLATFORM fragment
+(`prebuilt/vendor_ramdisk.cpio.lz4` + `build/tasks/vendor_boot.mk`) while
+keeping the RECOVERY fragment (LineageOS's own) unchanged.
+
+**Confirmed on real hardware**: after rebuilding just `vendor_boot.img` and
+reflashing both slots, `fastboot reboot recovery` **boots straight into
+LineageOS recovery** - first successful boot of any kind on this tree, and
+proof the PLATFORM-fragment fix (Round 54) is correct. RECOVERY-fragment
+budget (LineageOS recovery + stock's 26.4MiB PLATFORM fragment inside the
+fixed 64MB `vendor_boot` partition) fits fine, no trimming was needed.
+**Next**: `adb sideload lineage-…-taiko.zip` from recovery, factory reset
+(Format data), reboot to system - first real test of normal boot - then
+`adb shell dmesg | grep 'avc: denied'` + `adb logcat -b all` for the
+first-boot round (SELinux, camera, brightness curves, real AVB keys, trim
+`persist.miui.*`).
 
 Incremental rebuild after a `configs/`- or `Android.mk`-only change:
 `git -C device/xiaomi/taiko pull && brunch taiko` (~9 min, no
@@ -226,8 +233,11 @@ SELinux device policy.
 
 ### Round 54 - first real-hardware flash: no boot, no recovery ("logo then power off")
 
-**Not yet rebuilt/reflashed - fix identified and applied to the tree, needs a
-`vendor_boot.img` rebuild + reflash to confirm.**
+**Fix confirmed on real hardware**: after rebuilding `vendor_boot.img` with
+the stock PLATFORM fragment and reflashing both slots, `fastboot reboot
+recovery` boots straight into LineageOS recovery - first successful boot of
+any kind on this tree. Normal system boot (`adb sideload` + factory reset)
+is the next thing to verify.
 
 Device (physical Redmi Pad 2, first-ever flash of this tree) flashed `boot`,
 `vendor_boot`, `dtbo` (later also `vbmeta*` with `--disable-verity
