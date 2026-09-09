@@ -122,6 +122,23 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 46 — kati "overriding commands": CHRE / contexthub source vs blobs
+
+Past ninja (`check_elf=False` was a warning, not an error - the build ran
+through). kati: `overriding commands for target
+'.../vendor/bin/hw/android.hardware.contexthub-service.tinysys', previously
+defined at installs-lineage_taiko.mk:76665` - i.e. a soong **source** module
+already installs it.
+
+`system/chre` builds `android.hardware.contexthub-service.tinysys` plus its
+`chre_atoms_log` / `chremetrics-cpp` (`vendor_available`) libs from source; the
+HyperOS blobs at those exact paths collide (the service even DT_NEEDEDs the two
+libs). Dropped all three from `proprietary-files.txt` - the source CHRE stack
+provides them. Same class as Rounds 18-28 (HyperOS ships AOSP-source components
+verbatim as `/vendor` blobs).
+
+Re-run: `./setup-makefiles.py`.
+
 ### Round 45 — `check_elf=False` module-wide (end the check_elf tail)
 
 `libneuron_adapter_mgvi` (NeuroPilot/APU adapter): undefined

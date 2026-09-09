@@ -497,9 +497,6 @@ odm/etc/camera/cameraopt_reclaim.json
 # Camera firmware
 
 # Context hub
-vendor/bin/hw/android.hardware.contexthub-service.tinysys
-vendor/lib64/chre_atoms_log.so
-vendor/lib64/chremetrics-cpp.so
 
 # Display
 vendor/lib/libminiui.so
