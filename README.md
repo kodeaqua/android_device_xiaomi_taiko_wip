@@ -136,32 +136,28 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
-### Round 49 — ELF in PRODUCT_COPY_FILES (mvpu) + revert `check_elf=False`
+### Round 49 - ELF in PRODUCT_COPY_FILES: revert `check_elf=False`
 
 Past kati. ninja `Check non-ELF`:
 `vendor/lib*/libmvpuop_mtk_cv.so: error: found ELF prebuilt in PRODUCT_COPY_FILES,
-use cc_prebuilt_binary / cc_prebuilt_library_shared instead` (+ the whole
-`libmvpu_*` cluster).
+use cc_prebuilt_binary / cc_prebuilt_library_shared instead` (whole `libmvpu_*`
+cluster).
 
-Root cause: the Round-45 `ExtractUtilsModule(check_elf=False)` doesn't just skip
-the ELF check - it also demotes inter-dependent `.so` clusters (the 85-lib MTK
-MVPU OpenCL/NN-compiler island) from `cc_prebuilt_library_shared` modules to raw
-`PRODUCT_COPY_FILES` entries, which A16 then rejects.
+`ExtractUtilsModule(check_elf=False)` (Round 45) doesn't only skip the check - it
+also demotes inter-dependent `.so` clusters (the MTK MVPU OpenCL/NN-compiler
+island - a 43-lib DAG, no cycles) from `cc_prebuilt_library_shared` modules to
+raw `PRODUCT_COPY_FILES` entries, which A16 rejects.
 
-Fix: **reverted `check_elf` to `True`** and instead appended `;DISABLE_CHECKELF`
-to every ELF line in `proprietary-files.txt` (1321 total). Per-line
-`;DISABLE_CHECKELF` sets `check_elf_files: false` on the generated module
-*without* the COPY_FILES demotion - functionally the same "no check_elf grind",
-correct module shape.
+**Reverted `check_elf` to `True`** and appended `;DISABLE_CHECKELF` to every ELF
+line in `proprietary-files.txt` (1321 total). The per-line flag sets
+`check_elf_files: false` on the generated module *without* the COPY_FILES
+demotion - same "no check_elf grind", correct module shape. First tried dropping
+the `libmvpu*` cluster (87 lines) but `libswtcc` / `libultrahdr_mtk` (VPP HDR
+metadata / UltraHDR) hard-`DT_NEEDED` `libmvpu_wrapper`, so it's kept - it just
+had to stay a module set, not COPY_FILES.
 
-Also **dropped the whole `libmvpu*` cluster** (87 lines: 85 `.so` + 2
-`mvpu_ptn_player*` bins). It's a self-contained `dlopen`-only MediaTek VPU
-ML-accel island - `readelf -d` across the vendor tree shows nothing outside the
-cluster links it, and NeuronRuntime falls back to APU/GPU/CPU without it. yunluo
-ships a 16-lib subset; our full `_25`/`_30` multi-version set was bloat. Re-add
-the specific libs NeuronRuntime actually probes as a post-boot ML-perf task.
-
-Full re-extract required (`check_elf` flag + 1321 line flags changed).
+`./setup-makefiles.py` is enough (`check_elf` flag + line flags are makefile
+regen, no re-copy).
 
 ### Round 48 — kati "overriding commands": batch of AOSP-source `/vendor` blobs
 
