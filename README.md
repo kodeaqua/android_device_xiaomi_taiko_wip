@@ -199,6 +199,38 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 52 - device-tree audit pass (props / sepolicy / overlays / module load)
+
+Full re-read of the source files not touched in a while. **No tree change
+needed** - all clean:
+
+- **props** (`configs/props/*.prop`) - dump-derived and consistent.
+  `ro.hardware.egl=meow` + `ro.hardware.vulkan=mali` → the MEOW GPU shim
+  (`libGLES_meow.so` + `libMEOW_*.so`, all shipped) wraps the real Mali driver;
+  the Round-51 `egl/libGLES_mali.so` symlink is what `libGLES_meow.so` then
+  dlopens, so R51 was necessary and is sufficient.
+  `ro.surface_flinger.primary_display_orientation=ORIENTATION_180` +
+  `debug.sf.ignore_hwc_physical_display_orientation=true` = panel is mounted
+  upside-down (stock value, keep). `ro.vendor.{bt,fm,gps}.*` all set → the
+  `insmod .../*_${prop}.ko` lines in the factory/meta rc resolve.
+- **`/vendor/lib/modules`** - AOSP auto-creates it as a symlink →
+  `/vendor_dlkm/lib/modules` (because `BOARD_USES_VENDOR_DLKMIMAGE := true`), so
+  `init.insmod.sh` (`modprobe|*` from `init.insmod.mt6789.cfg`, started by
+  `init.mtkgki.rc` on `early-init`) + the `insmod /vendor/lib/modules/*.ko`
+  lines in `init.project.rc` / `init.mt6789.rc` all reach vendor_dlkm's 172
+  modules. Verified on the build box. `verify-build.sh` now checks this.
+- **`core_64_bit_only`** (`lineage_taiko.mk`) vs stock `ro.zygote=zygote64_32` -
+  deliberate (comment in `BoardConfig.mk`); `TARGET_2ND_ARCH := arm` keeps
+  32-bit *vendor* libs building so 32-bit HALs still run. Only effect: 32-bit
+  -only APKs won't run. Switch to `core_64_bit.mk` if full stock parity is
+  wanted.
+- **sepolicy/vendor** - minimal targeted allows (`mi_thermald`,
+  `charger_vendor`, health/keymint/power/pq); type-checks against 23.2 base.
+  Real policy work is still the first-boot `avc: denied` round.
+- **overlays** - `config_defaultPeakRefreshRate=90` ✓, Wi-Fi-only capability
+  flags ✓, `config_wifi5ghzSupport=true` ✓. Auto-brightness nits/backlight
+  curves are still yunluo's (Redmi Pad 1) - first-boot tuning, in the TODO.
+
 ### Round 51 - missing Mali/gralloc SoC symlinks (verify --deep catch)
 
 `verify-build.sh --deep` on the built tree flagged `vulkan.mali.so` and
