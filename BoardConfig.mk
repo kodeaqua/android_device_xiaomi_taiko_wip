@@ -21,6 +21,19 @@
 #        [1] type RECOVERY  ("recovery") -> recovery resources
 #    i.e. this is a standard BOARD_MOVE_RECOVERY_RESOURCES_TO_VENDOR_BOOT setup,
 #    NOT a separate "dlkm" ramdisk fragment.
+#  * The PLATFORM (0x1) fragment is NOT the one this build generates from
+#    TARGET_COPY_OUT_VENDOR_RAMDISK - it's the real stock fragment, byte-for-
+#    byte, via build/tasks/vendor_boot.mk repointing INTERNAL_VENDOR_RAMDISK_
+#    TARGET at prebuilt/vendor_ramdisk.cpio.lz4. This device's bootloader/LK
+#    loads the PLATFORM fragment ALONE for a normal boot (no concatenation
+#    with RECOVERY), so it must be a complete standalone first-stage rootfs -
+#    confirmed on the sibling TWRP tree (same device) that this build's own
+#    generated PLATFORM fragment panics early ("Unable to mount root fs on
+#    /dev/ram") because it lacks stock's real init/linkerconfig/sepolicy/
+#    prop.default/res content, even with the same real kernel modules bundled
+#    in. See build/tasks/vendor_boot.mk for the full writeup. The RECOVERY
+#    (0x2) fragment is untouched - still built from this tree's own LineageOS
+#    recovery sources on every compile.
 #
 # Corrections vs. taiko_referensi_BoardConfig.mk (claude-web draft):
 #   - device IS Virtual A/B (ro.virtual_ab.enabled=true) -> AB_OTA_UPDATER := true

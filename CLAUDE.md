@@ -39,7 +39,7 @@ now. `BOARD_SUPER_PARTITION_SIZE` is real (11 GiB from the scatter).
 | `rootdir/etc/*.rc`, `rootdir/bin/*.sh` | MTK init scripts from the stock vendor ramdisk; each has a `prebuilt_etc`/`sh_binary` in `rootdir/Android.bp` **and** a line in `device.mk` `PRODUCT_PACKAGES` — keep both in sync |
 | `sepolicy/vendor/` | **yunluo starting point** — regenerate from first-boot `avc: denied` |
 | `overlay/`, `overlay-lineage/` | RRO packages (in `PRODUCT_PACKAGES`, **not** `DEVICE_PACKAGE_OVERLAYS`). `power_profile.xml` battery = 9000, `config_defaultPeakRefreshRate` = 90 (right); auto-brightness curves still yunluo's |
-| `prebuilt/` | `boot.img`/`dtbo.img` (used as-is), `vendor_boot.img` (reference), `dtb/mt6789.dtb`, `modules/`, `vendor_dlkm/`, `system_dlkm/` |
+| `prebuilt/` | `boot.img`/`dtbo.img` (used as-is), `vendor_boot.img` (reference), `dtb/mt6789.dtb`, `modules/`, `vendor_dlkm/`, `system_dlkm/`, `vendor_ramdisk.cpio.lz4` (stock PLATFORM vendor_boot fragment, byte-for-byte — see Round 54) |
 | `kernel-headers/Makefile` | stub `TARGET_KERNEL_SOURCE` (wired in `BoardConfig.mk`). No kernel source, but LineageOS' `generated_kernel_includes` genrule (pulled by `generated_kernel_headers` consumers, e.g. `PowerOffAlarm`) still runs `make -C $(TARGET_KERNEL_SOURCE) headers_install` — stub makes an empty `usr/include`. See README Round 31. |
 
 ## Boot / kernel model (do not "fix" this into a normal kernel build)
@@ -57,6 +57,21 @@ now. `BOARD_SUPER_PARTITION_SIZE` is real (11 GiB from the scatter).
   `BOARD_MOVE_RECOVERY_RESOURCES_TO_VENDOR_BOOT := true` **and**
   `BOARD_INCLUDE_RECOVERY_RAMDISK_IN_VENDOR_BOOT := true`. The "2 ramdisks" =
   PLATFORM + RECOVERY, nothing else (no "dlkm" fragment).
+- **The PLATFORM (0x1) fragment is the real stock one, not this build's own.**
+  taiko's bootloader/LK loads PLATFORM **alone** for a normal boot (no
+  concatenation with RECOVERY — that only happens entering recovery), and
+  since there's no `init_boot` it has to be a complete standalone first-stage
+  rootfs (generic AOSP init tree **and** vendor bits). This build's own
+  generated PLATFORM fragment is real but not equivalent — confirmed on the
+  sibling `kodeaqua/android_device_xiaomi_taiko-twrp` tree (same device) that
+  it panics early (`Unable to mount root fs on /dev/ram`, before the fb
+  console is up — looks like "boot logo then power off", no visible error).
+  Fixed via `build/tasks/vendor_boot.mk` repointing
+  `INTERNAL_VENDOR_RAMDISK_TARGET` at `prebuilt/vendor_ramdisk.cpio.lz4`
+  (stock's PLATFORM fragment, extracted byte-for-byte from
+  `prebuilt/vendor_boot.img`). Do **not** "clean this up" back to the
+  generated fragment — see README Round 54 and the comment in that file for
+  the full mechanism + evidence. RECOVERY stays built from source, untouched.
 - `dtbo.img`: stock, `BOARD_PREBUILT_DTBOIMAGE`. `BOARD_KERNEL_SEPARATED_DTBO`
   is deliberately unset (build-from-source flag only).
 - `odm` is folded into `/vendor/odm` (`TARGET_COPY_OUT_ODM := vendor/odm`) — no

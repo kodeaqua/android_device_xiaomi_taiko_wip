@@ -124,13 +124,24 @@ to `kodeaqua/android_device_xiaomi_taiko_wip` `lineage-23.2`. 53 fix rounds
 (soong bootstrap → kati → ninja compile → OTA package → verify → cross-check),
 all logged below.
 
-**Not yet flashed** (device not in hand). **Next: flash**
-(`verify-build.sh --flash` prints the recipe: `fastboot flash vendor_boot` +
-vbmeta `--disable-verity` + boot chain both slots for a stock→Lineage first
-flash, `fastboot reboot recovery`, `adb sideload lineage-…-taiko.zip`, factory
-reset), then `adb shell dmesg | grep 'avc: denied'` + `adb logcat -b all` for
-the first-boot round (SELinux, camera, brightness curves, real AVB keys, trim
-`persist.miui.*`).
+**First real-hardware flash attempt made** (2026-09-09): `boot`/`vendor_boot`/
+`dtbo`, then `vbmeta*` with `--disable-verity --disable-verification` (both
+slots) - device shows the bootloader splash then powers off, no recovery
+either. **Root cause found and fixed in-tree (Round 54, not yet rebuilt/
+reflashed)**: this device's bootloader loads vendor_boot's PLATFORM ramdisk
+fragment *alone* for a normal boot, and it has to be a complete standalone
+first-stage rootfs (confirmed against the sibling `taiko-twrp` tree, which
+hit and solved the identical bug on real hardware) - this build's own
+generated PLATFORM fragment isn't equivalent to stock's and panics
+(`Unable to mount root fs on /dev/ram`) before the fb console is even up,
+which is why nothing showed past the boot logo. Fixed by swapping in the
+real stock PLATFORM fragment (`prebuilt/vendor_ramdisk.cpio.lz4` +
+`build/tasks/vendor_boot.mk`) while keeping the RECOVERY fragment
+(LineageOS's own) unchanged. **Next: rebuild `vendor_boot.img` only, reflash
+both slots, retest `fastboot reboot recovery` first** - see Round 54 for the
+full writeup, then `adb shell dmesg | grep 'avc: denied'` + `adb logcat -b
+all` for the first-boot round (SELinux, camera, brightness curves, real AVB
+keys, trim `persist.miui.*`).
 
 Incremental rebuild after a `configs/`- or `Android.mk`-only change:
 `git -C device/xiaomi/taiko pull && brunch taiko` (~9 min, no
@@ -212,6 +223,98 @@ fix, checkpoint, `system_dlkm` AVB chain) · recovery-in-vendor_boot · AVB
 Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
+
+### Round 54 - first real-hardware flash: no boot, no recovery ("logo then power off")
+
+**Not yet rebuilt/reflashed - fix identified and applied to the tree, needs a
+`vendor_boot.img` rebuild + reflash to confirm.**
+
+Device (physical Redmi Pad 2, first-ever flash of this tree) flashed `boot`,
+`vendor_boot`, `dtbo` (later also `vbmeta*` with `--disable-verity
+--disable-verification`, both slots) - same symptom every time: bootloader
+splash (Mi logo) shows, then the device powers off. Never reaches recovery
+either, which is the key diagnostic signal: recovery on this device rides
+entirely inside `vendor_boot.img` (no dedicated recovery partition), so a
+normal-boot-only failure would still let recovery through - both failing
+together points at `vendor_boot.img` itself, before AVB/vbmeta even applies.
+
+**Root cause, confirmed by analyzing `kodeaqua/android_device_xiaomi_taiko-twrp`**
+(a sibling tree for this exact device, TWRP recovery, verified live on real
+taiko hardware) - its README documents hitting and solving this identical bug:
+taiko's bootloader/LK, for a **normal boot**, loads vendor_boot's `ramdisk_type
+0x1` (PLATFORM) fragment **by itself** - it is only concatenated with the
+`0x2` (RECOVERY) fragment when entering recovery mode. Since this device has
+no `init_boot` partition and `boot.img` is kernel-only (`ramdisk_size = 0`),
+the PLATFORM fragment has to be a **complete standalone first-stage rootfs**
+- not just vendor fstab/ueventd/modules, but the generic AOSP init tree too
+(`init`, `linkerconfig`, `sepolicy`, `prop.default`, `res/`, every
+`*_contexts` file). The TWRP tree's own README shows the confirmed panic
+(from `pstore/console-ramoops` on real hardware) when booting their own
+AOSP-generated PLATFORM fragment as the sole normal-boot fragment - the exact
+same class this build also generates:
+
+```
+RAMDISK: lz4 image found at block 0
+F2FS-fs (ram0): Magic Mismatch...   (ext2/3/4/vfat/exfat/erofs all fail too)
+Kernel panic - not syncing: VFS: Unable to mount root fs on "/dev/ram" ...
+```
+
+This happens before the kernel framebuffer console is up, so nothing shows
+on screen past the bootloader's own logo - exactly the "logo then power off"
+symptom, and exactly why it's untouched by AVB/vbmeta flags (verified: the
+device's own report showed no change after disabling verity/verification).
+
+Verified directly against `prebuilt/vendor_boot.img` (this device's own
+stock reference image, already in the tree) with `unpack_bootimg.py`:
+
+```
+vendor_ramdisk00: size 27646885, type 0x1, name ''        (PLATFORM)
+vendor_ramdisk01: size 15390317, type 0x2, name 'recovery' (RECOVERY, stock/MIUI)
+```
+
+`vendor_ramdisk00` decompresses (lz4) to 70684928 bytes and is a real cpio
+archive containing `init`, `linkerconfig`, `sepolicy`, `prop.default`, `res/`,
+every `*_file_contexts`/`*_property_contexts`/`*_service_contexts`, and
+**215 kernel modules** including the UFS storage driver itself
+(`ufs-mediatek-mod.ko`, `phy-mtk-ufs.ko`) - matches the TWRP tree's findings
+exactly (same device, same dump lineage).
+
+**Fix** (same mechanism the TWRP tree uses, adapted to this tree's paths):
+extracted `vendor_ramdisk00` byte-for-byte to
+`prebuilt/vendor_ramdisk.cpio.lz4`, and added
+`device/xiaomi/taiko/build/tasks/vendor_boot.mk` (picked up by
+`build/make/core/Makefile`'s
+`-include $(sort $(wildcard device/*/*/build/tasks/*.mk))` at the very end,
+after every image rule is defined) which repoints
+`INTERNAL_VENDOR_RAMDISK_TARGET` at that prebuilt - this is what
+`mkbootimg --vendor_ramdisk` ends up using, since the official
+`BOARD_VENDOR_RAMDISK_FRAGMENT.*.PREBUILT` mechanism only covers *extra*
+fragments, never the main one. The RECOVERY (`0x2`) fragment is **untouched**
+- still built from this tree's own LineageOS recovery sources +
+`BOARD_VENDOR_RAMDISK_RECOVERY_KERNEL_MODULES_LOAD` on every compile, exactly
+as before. `BoardConfig.mk`'s existing `BOARD_VENDOR_RAMDISK_KERNEL_MODULES`/
+`_LOAD` wiring is also untouched deliberately (not trimmed/de-duplicated
+against the now-unused generated PLATFORM fragment) - it still feeds the
+RECOVERY-side module set, and the generated-but-unused PLATFORM fragment
+costs nothing to leave in place.
+
+**Budget check, not yet build-verified**: `BOARD_VENDOR_BOOTIMAGE_PARTITION_SIZE`
+is a fixed 67108864 (64MB). Stock PLATFORM fragment is 27646885 bytes
+(~26.4MiB); this tree's own LineageOS RECOVERY fragment must fit in the
+remaining budget (~39.2MiB minus header/dtb/bootconfig/table overhead,
+~194KB). LineageOS recovery is much leaner than TWRP's (no GUI theme,
+busybox, bash/nano/ntfs-3g/exfat, resetprop/repacktools), so this is
+expected to fit comfortably, but hasn't been confirmed against an actual
+built `vendor_boot.img` yet - check on the next `mka vendorbootimage` /
+`brunch taiko` (`assert-max-image-size` fails loudly if it doesn't; the TWRP
+tree hit exactly this wall with its own bulkier recovery and had to trim
+duplicate kernel modules out of its RECOVERY fragment - **not** applied here
+pre-emptively, only if the build actually overflows).
+
+**Next**: rebuild `vendor_boot.img` (only this image needs to change - no
+`breakfast`/kati/full ninja regen, same class as the Round-52 "config-only"
+incremental path) and reflash `vendor_boot` to both slots, then retest
+`fastboot reboot recovery` before touching `super`/data again.
 
 ### Round 53 - cross-check against a booting MT6789 LineageOS (yunluo 23.0)
 
