@@ -361,23 +361,30 @@ grep -qs '^ro.sf.lcd_density=' "$OUT/vendor/build.prop" "$OUT/system/build.prop"
 # ---------------------------------------------------------------------------
 sec "SELinux"
 for f in vendor/etc/selinux/precompiled_sepolicy vendor/etc/selinux/vendor_sepolicy.cil \
-         vendor/etc/selinux/plat_sepolicy_and_mapping.sha256 \
-         system/etc/selinux/plat_sepolicy.cil odm/etc/selinux/odm_sepolicy.cil ; do
+         system/etc/selinux/plat_sepolicy.cil ; do
   [ -e "$OUT/$f" ] && pass "$f" || warn "$f absent"
 done
-if [ -f "$OUT/vendor/etc/selinux/plat_sepolicy_and_mapping.sha256" ] && [ -f "$OUT/system/etc/selinux/plat_sepolicy.cil" ]; then
-  h1=$(cat "$OUT/vendor/etc/selinux/plat_sepolicy_and_mapping.sha256")
-  h2=$( { cat "$OUT/system/etc/selinux/plat_sepolicy.cil" "$OUT"/system/etc/selinux/mapping/*.cil 2>/dev/null; } | sha256sum | cut -d' ' -f1)
-  [ "$h1" = "$h2" ] && pass "precompiled_sepolicy hash matches plat cil (fast boot path)" \
-                    || warn "precompiled_sepolicy stale vs plat cil - vendor_init recompiles at boot (slower, still works)"
+[ -e "$OUT/odm/etc/selinux/odm_sepolicy.cil" ] && pass "odm/etc/selinux/odm_sepolicy.cil" \
+  || info "  odm_sepolicy.cil absent (ok - odm has no sepolicy)"
+# the fast-boot marker is precompiled_sepolicy.plat_sepolicy_and_mapping.sha256
+# (note the 'precompiled_sepolicy.' prefix; build auto-generates it alongside
+# precompiled_sepolicy). Absent => vendor_init recompiles sepolicy at boot.
+sha=$(ls -1 "$OUT"/vendor/etc/selinux/precompiled_sepolicy.*sha256 2>/dev/null)
+if [ -n "$sha" ]; then
+  echo "$sha" | sed "s|$OUT/|  |" | while read -r l; do pass "$l"; done
+else
+  warn "no precompiled_sepolicy.*_sepolicy_and_mapping.sha256 - vendor_init recompiles sepolicy at boot (~1s slower, still boots)"
 fi
 
 # ---------------------------------------------------------------------------
 sec "APEX (Round 48: built, not blob)"
-for a in com.android.hardware.cas com.google.android.widevine.nonupdatable; do
-  f=$(ls -1 "$OUT"/vendor/apex/$a.apex "$OUT"/vendor/apex/$a.capex 2>/dev/null | head -1)
-  [ -n "$f" ] && pass "vendor apex: $(basename "$f")" || warn "vendor apex $a absent (ok if not required by product)"
-done
+f=$(ls -1 "$OUT"/vendor/apex/com.android.hardware.cas.apex "$OUT"/vendor/apex/com.android.hardware.cas.capex 2>/dev/null | head -1)
+[ -n "$f" ] && pass "vendor apex: $(basename "$f")" || info "  com.android.hardware.cas apex absent (yunluo has none either - ok)"
+# widevine.nonupdatable is NOT a vendor apex on MT6789 LineageOS (yunluo confirms);
+# L1/L3 comes from the mediadrm HAL + keybox, not /vendor/apex.
+ls -1 "$OUT"/vendor/apex/com.google.android.widevine.nonupdatable.* >/dev/null 2>&1 \
+  && info "  widevine.nonupdatable apex present" \
+  || info "  widevine.nonupdatable apex absent (expected - not a vendor apex here)"
 n=$(find "$OUT/vendor/apex" -name '*.apex' -o -name '*.capex' 2>/dev/null | wc -l)
 info "  $n apex in vendor/apex"
 

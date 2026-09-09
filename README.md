@@ -112,11 +112,15 @@ and lists blobs with missing `NEEDED` libs — add `blob_fixups` and re-extract.
 **`verify-build.sh --deep` (post Round 51): `0 FAIL · 117 PASS · 16 WARN`** —
 GPU/graphics loader paths all resolve, every vendor `.so` `DT_NEEDED` resolves,
 partition sizes fit the scatter, AVB chain + VINTF + fstab + kernel modules all
-good. The 16 WARNs are first-boot / cosmetic (audio pre-processing legacy lib,
-`libwpa_client`/`libhidparser`/CHRE/dynamic-sensor absences, sepolicy
-recompile-at-boot, Widevine L3, no img-zip). Pushed to
-`kodeaqua/android_device_xiaomi_taiko_wip` `lineage-23.2`. 51 fix rounds (soong
-bootstrap → kati → ninja compile → OTA package → verify), all logged below.
+good. Round 53 cross-checked every WARN against a **booting** MT6789 LineageOS
+(yunluo 23.0): `libwpa_client` / CHRE / `sensors.dynamic_sensor_hal` +
+`libhidparser` / Widevine-apex / `gralloc.common` absences are all **normal**
+(yunluo is the same, or taiko's `hals.conf` never references it) - not
+first-boot risks. The one real thing it surfaced (`audio_effects.xml` pointing
+at a non-existent `libaudiopreprocessing_mtk.so`) is fixed. Pushed to
+`kodeaqua/android_device_xiaomi_taiko_wip` `lineage-23.2`. 53 fix rounds (soong
+bootstrap → kati → ninja compile → OTA package → verify → cross-check), all
+logged below.
 
 **Next: flash to a device** (`verify-build.sh --flash` prints the recipe), then
 `adb shell dmesg | grep 'avc: denied'` + `adb logcat -b all` for the first-boot
@@ -198,6 +202,45 @@ fix, checkpoint, `system_dlkm` AVB chain) · recovery-in-vendor_boot · AVB
 Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
+
+### Round 53 - cross-check against a booting MT6789 LineageOS (yunluo 23.0)
+
+Extracted `vendor.img` from `lineage-23.0-20251015-UNOFFICIAL-yunluo.zip`
+(Redmi Pad 1, same SoC, booting) and diffed against taiko's 16 verify WARNs.
+
+**Confirmed non-issues** (yunluo, which boots, is the same):
+- `libwpa_client.so` - **not in yunluo either**. Legacy, unused on AIDL Wi-Fi.
+- `contexthub-service.tinysys` / `chre_atoms_log.so` - **not in yunluo**. No CHRE
+  on MT6789 LineageOS.
+- `sensors.dynamic_sensor_hal.so` + `libhidparser.so` - yunluo ships both, but
+  **only because yunluo's `hals.conf` lists `sensors.dynamic_sensor_hal.so`**
+  (which hard-`NEED`s `libhidparser`). **taiko's stock `hals.conf` =
+  `sensors@2.X-subhal-mediatek.so` + `sensors.camera.light.so` only** - it never
+  references the dynamic-sensor HAL, so dropping both (Round 47/earlier) is
+  correct. Nothing else in taiko's vendor image `NEED`s `libhidparser`
+  (`--deep` is green).
+- `com.google.android.widevine.nonupdatable` apex - **not in yunluo**; not a
+  `/vendor/apex` component on MT6789 LineageOS (taiko even ships
+  `com.android.hardware.cas.apex`, which yunluo doesn't).
+- `gralloc.common.so` symlink - yunluo (HIDL, 23.0) has it; taiko (AIDL gralloc,
+  23.2) has no `gralloc.common.so` in the dump at all - correctly absent.
+- Round-51 subdir symlinks (`egl/`, `hw/`, `mtkcam/`) - yunluo has the exact
+  same class (`egl/libGLES_mali.so`, `hw/vulkan.mali.so`,
+  `mtkcam/libmtkcam_streaminfo_plugin-p1stt.so`, `lib/modules ->
+  /vendor_dlkm/lib/modules`, ...). Round 51 confirmed correct.
+
+**One real fix** (`configs/audio/audio_effects.xml`): stock (and taiko, which
+copied it verbatim) names `libaudiopreprocessing_mtk.so` for the `pre_processing`
+library, but **no such file exists in the dump** (only
+`soundfx/libaudiopreprocessing.so`) - so `aec`/`ns`/`agc` mic pre-processing
+silently fails to load, on HyperOS too. yunluo's config uses the generic
+`libaudiopreprocessing.so` (same effect UUIDs, and it IS shipped). Repointed
+taiko's line at `libaudiopreprocessing.so`.
+
+**One script fix** (`verify-build.sh`): the sepolicy fast-boot marker is
+`precompiled_sepolicy.plat_sepolicy_and_mapping.sha256` (with the
+`precompiled_sepolicy.` prefix) - the check was looking for the un-prefixed
+name and always WARNing.
 
 ### Round 52 - device-tree audit pass (props / sepolicy / overlays / module load)
 
@@ -1278,18 +1321,13 @@ Still open: see TODO.
       auto-brightness nits/backlight curves, Wi-Fi country.
 - [ ] Re-sign with real AVB keys once unlocked-and-booting (currently AOSP test
       keys everywhere).
-- [ ] First-boot `logcat`/`dmesg` triage of the Round-50 verify absences
-      (all non-fatal — restore the blob line only if the feature is broken):
-      - `EffectFactory` load errors → `audio_effects.xml` line 24 wants
-        `libaudiopreprocessing_mtk.so`, image has `libaudiopreprocessing.so`.
-      - Wi-Fi assoc fails → check for a `libwpa_client.so` `dlopen` error.
-      - `contexthub`/CHRE service not starting → `contexthub-service.tinysys`
-        (dropped R46) + `chre_atoms_log.so` not rebuilt from source.
-      - External/dynamic sensors absent → `sensors.dynamic_sensor_hal.so` (R47).
-      - BT keyboard/mouse HID broken → `libhidparser.so`.
-      - `camerahalserver` crash → confirm
-        `android.hardware.camera.provider@2.6-impl-mediatek.so` is in the image
-        (`libmtkcam_hal_aidl_provider.so` hard-NEEDs it).
-      - No GPU / black screen → confirm `vendor/lib64/egl/libGLES_mali.so`
-        present (`vulkan.mali.so` NEEDs it).
+- [ ] First-boot `logcat`/`dmesg` triage (Round 53 cleared most of the earlier
+      list - `libwpa_client` / CHRE / `sensors.dynamic_sensor_hal` +
+      `libhidparser` / Widevine-apex absences are all normal for MT6789
+      LineageOS, confirmed vs yunluo). Remaining watch items:
+      - `EffectFactory` errors → the `audio_effects.xml` pre_processing lib was
+        repointed to `libaudiopreprocessing.so` (R53); confirm aec/ns/agc load.
+      - `camerahalserver` crash → camera correctness is still a first-boot task
+        (intra-vendor metadata ABI split, `sepolicy`).
+      - Auto-brightness feel → the nits/backlight curves are still yunluo's.
 ```

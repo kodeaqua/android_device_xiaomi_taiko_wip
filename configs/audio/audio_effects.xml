@@ -21,7 +21,12 @@
         <library name="downmix" path="libdownmix.so"/>
         <library name="loudness_enhancer" path="libldnhncr.so"/>
         <library name="dynamics_processing" path="libdynproc.so"/>
-        <library name="pre_processing" path="libaudiopreprocessing_mtk.so"/>
+        <!-- HyperOS stock names "libaudiopreprocessing_mtk.so" here but ships no
+             such file (dump has only soundfx/libaudiopreprocessing.so) - so
+             aec/ns/agc capture pre-processing silently fails to load on stock.
+             The generic AOSP lib exports the same effect UUIDs and IS shipped;
+             LineageOS/yunluo uses it too. -->
+        <library name="pre_processing" path="libaudiopreprocessing.so"/>
         <library name="spatializer" path="libspatializer.so"/>
         <library name="misoundfx" path="libmisoundfx_aidl.so"/>
         <!--DOLBY DAP-->
