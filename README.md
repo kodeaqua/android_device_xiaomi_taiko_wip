@@ -239,12 +239,16 @@ SELinux device policy.
 
 ### Round 55 - recovery ADB never enumerates (nothing in Windows Device Manager either)
 
-**Not yet rebuilt/reflashed.** After Round 54 got recovery + normal boot both
-working, `adb devices` from recovery's "Apply from ADB" screen came back
-completely empty - and not just `adb`: nothing new appeared in Windows
-Device Manager at all when plugging in (same cable/port that worked fine for
-`fastboot` the whole time), ruling out a missing-driver explanation - the
-gadget itself never enumerates on the bus.
+**Fix confirmed on real hardware**: after rebuilding `vendor_boot.img` with
+`recovery/root/init.recovery.mt6789.rc` and reflashing both slots, `adb
+devices` from recovery's "Apply from ADB" screen now sees the device.
+
+After Round 54 got recovery + normal boot both working, `adb devices` from
+recovery's "Apply from ADB" screen came back completely empty - and not just
+`adb`: nothing new appeared in Windows Device Manager at all when plugging
+in (same cable/port that worked fine for `fastboot` the whole time), ruling
+out a missing-driver explanation - the gadget itself never enumerated on the
+bus.
 
 Root cause, found by reading `bootable/recovery/etc/init.rc` (AOSP default,
 unmodified by this tree until now) directly: it does
@@ -316,8 +320,9 @@ block) needed no fix - confirmed from `bootable/recovery/install/
 adb_install.cpp` that it's set by the adb daemon itself once it opens the
 functionfs endpoint, independent of configfs vs legacy.
 
-**Next**: rebuild `vendor_boot.img` only (recovery-side change) and reflash
-both slots, then retry `adb devices` from "Apply from ADB".
+**Next**: `adb sideload lineage_taiko-ota.zip` (this tree's own build, not the
+GSI System is currently running), factory reset, reboot - first real test of
+taiko's own ROM.
 
 ### Round 54 - first real-hardware flash: no boot, no recovery ("logo then power off")
 
