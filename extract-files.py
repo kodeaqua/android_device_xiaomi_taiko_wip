@@ -163,17 +163,14 @@ module = ExtractUtilsModule(
     blob_fixups=blob_fixups,
     lib_fixups=lib_fixups,
     namespace_imports=namespace_imports,
-    # check_elf=False (was True): the MTK ISP6s camera cluster + the NeuroPilot /
-    # APU / legacy SW-codec blobs are a mutually-referencing web of NSCam:: /
-    # vendor-namespace C++ symbols, versioned NDK symbols (AHardwareBuffer_*
-    # @LIBNATIVEWINDOW), __aeabi_* compiler-rt builtins and a few malformed old
-    # DT_STRTABs. soong's per-module `check_elf_file` can't see every sibling in
-    # its --shared-lib closure, so it kept flagging benign cross-lib symbols one
-    # blob at a time (Rounds 36-45). ~265 lines already carried ;DISABLE_CHECKELF;
-    # flip the whole module off - the same choice most MTK LineageOS trees make.
-    # blob_fixups (patchelf replace_needed for the real AIDL version skews) are
-    # unaffected - they run at extract time regardless of this flag.
-    check_elf=False,
+    # check_elf stays True at the MODULE level (check_elf=False demotes
+    # inter-dependent .so clusters - mvpu, etc. - into PRODUCT_COPY_FILES, which
+    # then trips 'found ELF prebuilt in PRODUCT_COPY_FILES', Round 49). Every
+    # ELF line in proprietary-files.txt instead carries ;DISABLE_CHECKELF (see
+    # its header) - that sets check_elf_files:false on the generated module
+    # without demoting it. blob_fixups (AIDL version-skew replace_needed) run at
+    # extract time regardless.
+    check_elf=True,
     add_firmware_proprietary_file=True,
 )
 

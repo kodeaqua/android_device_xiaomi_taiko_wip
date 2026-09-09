@@ -136,6 +136,33 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 49 — ELF in PRODUCT_COPY_FILES (mvpu) + revert `check_elf=False`
+
+Past kati. ninja `Check non-ELF`:
+`vendor/lib*/libmvpuop_mtk_cv.so: error: found ELF prebuilt in PRODUCT_COPY_FILES,
+use cc_prebuilt_binary / cc_prebuilt_library_shared instead` (+ the whole
+`libmvpu_*` cluster).
+
+Root cause: the Round-45 `ExtractUtilsModule(check_elf=False)` doesn't just skip
+the ELF check - it also demotes inter-dependent `.so` clusters (the 85-lib MTK
+MVPU OpenCL/NN-compiler island) from `cc_prebuilt_library_shared` modules to raw
+`PRODUCT_COPY_FILES` entries, which A16 then rejects.
+
+Fix: **reverted `check_elf` to `True`** and instead appended `;DISABLE_CHECKELF`
+to every ELF line in `proprietary-files.txt` (1321 total). Per-line
+`;DISABLE_CHECKELF` sets `check_elf_files: false` on the generated module
+*without* the COPY_FILES demotion - functionally the same "no check_elf grind",
+correct module shape.
+
+Also **dropped the whole `libmvpu*` cluster** (87 lines: 85 `.so` + 2
+`mvpu_ptn_player*` bins). It's a self-contained `dlopen`-only MediaTek VPU
+ML-accel island - `readelf -d` across the vendor tree shows nothing outside the
+cluster links it, and NeuronRuntime falls back to APU/GPU/CPU without it. yunluo
+ships a 16-lib subset; our full `_25`/`_30` multi-version set was bloat. Re-add
+the specific libs NeuronRuntime actually probes as a post-boot ML-perf task.
+
+Full re-extract required (`check_elf` flag + 1321 line flags changed).
+
 ### Round 48 — kati "overriding commands": batch of AOSP-source `/vendor` blobs
 
 `installs-lineage_taiko.mk` vs a make-side (`build/make/core/Makefile:148`)
