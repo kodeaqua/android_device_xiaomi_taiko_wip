@@ -25,8 +25,8 @@
 # Audio
 vendor/lib/vendor.mediatek.hardware.audio@6.1.so
 vendor/lib64/vendor.mediatek.hardware.audio@6.1.so
-vendor/lib/android.hardware.audio.core-impl-mediatek.so
-vendor/lib64/android.hardware.audio.core-impl-mediatek.so
+vendor/lib/android.hardware.audio.core-impl-mediatek.so;DISABLE_CHECKELF
+vendor/lib64/android.hardware.audio.core-impl-mediatek.so;DISABLE_CHECKELF
 vendor/lib/android.hardware.bluetooth.audio-impl-mediatek.so
 vendor/lib64/android.hardware.bluetooth.audio-impl-mediatek.so
 vendor/lib/hw/android.hardware.audio.effect.aidl-impl-mediatek.so

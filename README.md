@@ -122,6 +122,31 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 37 — `check_elf_file`: `audio.core-impl-mediatek` vs source `libaudioutils`
+
+`//vendor/xiaomi/taiko:android.hardware.audio.core-impl-mediatek check elf file`
+(arm + arm64): `error: Unresolved symbol:
+_ZN7android11audio_utils21mutex_get_enable_flagEv` (+ `mutex_impl<AudioMutex
+Attributes>::get_registry()` / `::get_mutex_stat_array()`).
+
+All three are `audio_utils` mutex deadlock-detection / lock-stats symbols. The
+MTK AIDL audio-core HAL blob was built against HyperOS's `libaudioutils.so`,
+which exports them; lineage-23.2's `system/media` `libaudioutils.so` (passed to
+`check_elf_file` via `--shared-lib`) does not — the instrumentation is
+header-inlined / static there, not a shared export. Not a version skew, an
+export-surface change. `readelf` sweep: this is the **only** blob with these
+UND syms (the sibling `audio.effect` / `bluetooth.audio` / `power` /
+`soundtrigger3` MTK impls resolve cleanly).
+
+`android.hardware.audio.core-impl-mediatek.so` provides `audio.core/IModule` —
+essential, no source replacement — so `;DISABLE_CHECKELF` on both
+`proprietary-files.txt` lines (same mechanism yunluo uses ~10×). **First-boot
+risk:** if the inlined `audio_utils::mutex` ctor path actually calls
+`mutex_get_enable_flag()`, the HAL fails to `dlopen` → no MTK audio core →
+device still boots, audioserver just has no module. Post-boot fix options:
+cherry-pick the `system/media` commit that keeps these exported, a stub shim
+lib via `blob_fixup().add_needed()`, or a newer HyperOS audio HAL.
+
 ### Round 36 — `check_elf_file`: AEE v2 dumpers vs the 23.2 source `libaedv`
 
 `//vendor/xiaomi/taiko:aee_dumpstatev_v2 check elf file` +
