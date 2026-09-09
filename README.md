@@ -122,6 +122,22 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 38 — `check_elf_file`: legacy `.ca7` SW video codecs, `__aeabi_*`
+
+`//vendor/xiaomi/taiko:libHEVCdec_sa.ca7.android check elf file [arm]`:
+`error: Unresolved symbol: __aeabi_idiv / __aeabi_idivmod / __aeabi_uidiv /
+__aeabi_uidivmod`.
+
+These are ARM EABI integer-division compiler-runtime builtins. The `.ca7`
+(Cortex-A7-era) MediaTek software video codecs were built with a toolchain that
+pulled them from `libgcc`; `check_elf_file` for a prebuilt has no compiler-rt in
+its `--shared-lib` list, so it flags them — but bionic `libc.so` exports
+`__aeabi_*` on 32-bit arm, so they resolve fine at load time. This is the exact
+cluster yunluo `;DISABLE_CHECKELF`s. Applied `;DISABLE_CHECKELF` to all 17
+`.ca7` lines (`libHEVCdec_sa`, `libh264dec_s{a,d,e}`, `libhevce_sb`,
+`libmp4enc_sa`, `libvp8dec/enc_sa`, `libvp9dec_sa` × lib/lib64). These are
+fallback SW codecs for the MTK HW vcodec — kept, not dropped.
+
 ### Round 37 — `check_elf_file`: `audio.core-impl-mediatek` vs source `libaudioutils`
 
 `//vendor/xiaomi/taiko:android.hardware.audio.core-impl-mediatek check elf file`
