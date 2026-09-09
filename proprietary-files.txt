@@ -756,7 +756,7 @@ vendor/etc/init/vendor.mediatek.hardware.mmagent-service.rc
 vendor/lib/mt6789/libmmagent.so
 vendor/lib/vendor.mediatek.hardware.mmagent-V1-ndk.so
 vendor/lib64/mt6789/libmmagent.so
-vendor/lib64/libneuralnetworks_sl_driver_mtk_prebuilt.so
+vendor/lib64/libneuralnetworks_sl_driver_mtk_prebuilt.so;DISABLE_CHECKELF
 vendor/lib64/vendor.mediatek.hardware.mmagent-V1-ndk.so
 vendor/lib64/vendor.mediatek.hardware.mmagent@1.0.so
 vendor/lib64/vendor.mediatek.hardware.mmagent@1.1.so
@@ -1517,12 +1517,12 @@ vendor/lib/libspeech_enh_lib.so
 vendor/lib/libspeechparser_vendor.so
 vendor/lib/libswtcc.so
 vendor/lib/libtflite_mtk.so
-vendor/lib/libthha.so
+vendor/lib/libthha.so;DISABLE_CHECKELF
 vendor/lib/libtida_mitee.so
 vendor/lib/libtranslator_mapi_v3.0.so
 vendor/lib/libtranslator_mdmi_v2.8.2.so
 vendor/lib/libtranslator_utils.so
-vendor/lib/libvcodec_oal.so
+vendor/lib/libvcodec_oal.so;DISABLE_CHECKELF
 vendor/lib/libvcodecdrv_header_stub.so
 vendor/lib/libvp8dec_sa.ca7.so;DISABLE_CHECKELF
 vendor/lib/libvp8enc_sa.ca7.so;DISABLE_CHECKELF
@@ -1760,12 +1760,12 @@ vendor/lib64/libspeech_enh_lib.so
 vendor/lib64/libspeechparser_vendor.so
 vendor/lib64/libswtcc.so
 vendor/lib64/libtflite_mtk.so
-vendor/lib64/libthha.so
+vendor/lib64/libthha.so;DISABLE_CHECKELF
 vendor/lib64/libtida_mitee.so
 vendor/lib64/libtranslator_mapi_v3.0.so
 vendor/lib64/libtranslator_mdmi_v2.8.2.so
 vendor/lib64/libtranslator_utils.so
-vendor/lib64/libvcodec_oal.so
+vendor/lib64/libvcodec_oal.so;DISABLE_CHECKELF
 vendor/lib64/libvcodecdrv_header_stub.so
 vendor/lib64/libvgoservice.so
 vendor/lib64/libvia-ril.so
@@ -1859,7 +1859,7 @@ vendor/bin/hw/mt6789/camerahalserver
 vendor/lib/vendor.mediatek.hardware.camera.atms@1.0.so
 vendor/lib/vendor.mediatek.hardware.camera.bgservice@1.0.so
 vendor/lib/vendor.mediatek.hardware.camera.bgservice@1.1.so
-vendor/lib64/hw/mt6789/android.hardware.camera.provider@2.6-impl-mediatek.so
+vendor/lib64/hw/mt6789/android.hardware.camera.provider@2.6-impl-mediatek.so;DISABLE_CHECKELF
 vendor/lib64/hw/mt6789/vendor.mediatek.hardware.camera.ccap@1.0-impl.so
 vendor/lib64/hw/mt6789/vendor.mediatek.hardware.camera.isphal_aidl@1.0-impl.so
 vendor/lib64/hw/vendor.mediatek.hardware.camera.atms_aidl@1.0-impl.so
@@ -1901,7 +1901,7 @@ vendor/lib/mt6789/libmtkcam.atmseventmgr.so
 vendor/lib/mt6789/libmtkcam_debugutils.so
 vendor/lib/mt6789/libmtkcam_metadata.so
 vendor/lib/mt6789/libmtkcam_modulehelper.so
-vendor/lib/mt6789/libmtkcam_stdutils.so
+vendor/lib/mt6789/libmtkcam_stdutils.so;DISABLE_CHECKELF
 vendor/lib/mt6789/libmtkcam_sysutils.so
 vendor/lib/mt6789/libmtkcam_tuning_utils.so
 vendor/lib/mt6789/libmtkcam_ulog.so
@@ -2124,7 +2124,7 @@ vendor/lib64/mt6789/libmtkcam_pipelinepolicy_factory.so
 vendor/lib64/mt6789/libmtkcam_prerelease.so
 vendor/lib64/mt6789/libmtkcam_rsc.so
 vendor/lib64/mt6789/libmtkcam_scenariorecorder.so
-vendor/lib64/mt6789/libmtkcam_stdutils.so
+vendor/lib64/mt6789/libmtkcam_stdutils.so;DISABLE_CHECKELF
 vendor/lib64/mt6789/libmtkcam_streamutils.so
 vendor/lib64/mt6789/libmtkcam_synchelper.so
 vendor/lib64/mt6789/libmtkcam_sysutils.so

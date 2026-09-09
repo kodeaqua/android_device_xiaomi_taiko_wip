@@ -122,6 +122,18 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 41 — proactively adopt yunluo's `DISABLE_CHECKELF` set
+
+Rounds 36-40 were one-at-a-time `check_elf_file` failures on quirky MTK/Xiaomi
+blobs. yunluo (the proven MT6789 23.0 template) `;DISABLE_CHECKELF`s 20 lines;
+we had matched only the `.ca7` codec cluster. Applied the rest that exist in our
+tree, un-disabled: `android.hardware.camera.provider@2.6-impl-mediatek.so`
+(HIDL camera provider), `libmtkcam_stdutils.so` (lib+lib64), `libthha.so`
+(lib+lib64, MTK thermal-HAL-helper used by the codec OAL), `libvcodec_oal.so`
+(lib+lib64, MTK OMX abstraction), `libneuralnetworks_sl_driver_mtk_prebuilt.so`.
+Same rationale as Round 38 - these are old MTK blobs whose ELF trips check_elf
+(compiler-rt builtins, versioned syms, NDK STL soname) but resolve at runtime.
+
 ### Round 40 — `check_elf_file`: `libmialgo_*` NEEDED `libc++_shared.so`
 
 `//vendor/xiaomi/taiko:libmialgo_{utils,sd,ai_vision} check elf file`:
