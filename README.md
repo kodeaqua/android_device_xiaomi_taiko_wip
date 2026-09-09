@@ -121,14 +121,25 @@ for the fix-class cheat sheet.
 After `brunch taiko`, from the build root:
 
 ```
-./device/xiaomi/taiko/tools/verify-build.sh          # artifacts, sizes, VINTF, modules, fstab, AVB, props, sepolicy
-./device/xiaomi/taiko/tools/verify-build.sh --deep    # + scan every built vendor .so for unresolved NEEDED (first-boot dlopen risk)
+./device/xiaomi/taiko/tools/verify-build.sh            # fast
+./device/xiaomi/taiko/tools/verify-build.sh --deep     # + per-.so unresolved-NEEDED scan
+./device/xiaomi/taiko/tools/verify-build.sh --flash    # print the fastboot recipe
 ```
 
-It also confirms the **Round 46-48 bet** - every blob dropped on the assumption a
-source module provides it is checked to actually exist in the built vendor image
-(a FAIL there = restore that `proprietary-files.txt` line). `avbtool` /
-`checkvintf` on `$PATH` enable the AVB-descriptor and check-compat sections.
+Sections: build artifacts + **partition sizes vs the scatter** (won't overflow
+on flash) · **generated-makefile hygiene** (no `.so`/`.apk` in
+`PRODUCT_COPY_FILES` - the Round-49 regression) · **round-by-round drop
+verification** (every blob dropped for a source module must exist in the built
+image - FAIL = restore that `proprietary-files.txt` line) · kept MTK/Xiaomi
+blobs + dropped-on-purpose absent · **MVPU island** (`libmvpu_wrapper` +
+`libswtcc`/`libultrahdr_mtk`) · VINTF (device manifest HALs, the Round-35
+proprietary-HAL FCM, `checkvintf --check-compat`) · kernel modules
+(`modules.load` ↔ `.ko`, `modules.dep`) · fstab (dual-fs, metadata enc, SD-path
+fix, checkpoint, `system_dlkm` AVB chain) · recovery-in-vendor_boot · AVB
+(`avbtool`: flags=3, rollback locations, chained descriptors) · build.prop
+(Round 29-30: SPL, `ro.product.vendor.name`, no `sdk_full` dup,
+`ab_ota_partitions` full list) · SELinux (precompiled hash match) · APEX.
+`avbtool` / `checkvintf` on `$PATH` unlock the AVB and check-compat sections.
 
 ## AOSP-core audit (source.android.com/docs/core)
 

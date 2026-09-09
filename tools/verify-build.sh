@@ -3,265 +3,359 @@
 # SPDX-FileCopyrightText: 2026 The LineageOS Project
 # SPDX-License-Identifier: Apache-2.0
 #
-# verify-build.sh - post-`brunch taiko` sanity check for the Redmi Pad 2 tree.
+# verify-build.sh - post-`brunch taiko` sanity check for the Xiaomi Redmi Pad 2
+# (taiko) LineageOS 23.2 bring-up. Run from the build root:
 #
-# Run from the LineageOS build root AFTER a build:
-#     ./device/xiaomi/taiko/tools/verify-build.sh
-#     ./device/xiaomi/taiko/tools/verify-build.sh --deep     # + per-.so dlopen scan (slow)
-#     OUT=out/target/product/taiko ./device/xiaomi/taiko/tools/verify-build.sh
+#     ./device/xiaomi/taiko/tools/verify-build.sh            # fast
+#     ./device/xiaomi/taiko/tools/verify-build.sh --deep     # + per-.so NEEDED scan
+#     ./device/xiaomi/taiko/tools/verify-build.sh --flash    # print fastboot cmds
+#     OUT=... TOP=... ./device/xiaomi/taiko/tools/verify-build.sh
 #
-# It checks: build artifacts, that every blob dropped for a source module is
-# actually provided by source, that key MTK/Xiaomi blobs survived, VINTF, kernel
-# modules, fstab, AVB, partition sizes vs the scatter, and (--deep) which vendor
-# .so files still have unresolved NEEDED libs (= likely first-boot dlopen fails).
-# Nothing here needs root.
+# Sections: artifacts / partition sizes / generated-makefile hygiene /
+# round-by-round drop verification / kept MTK-Xiaomi blobs / mvpu island /
+# VINTF / kernel modules / fstab / recovery / AVB / build.prop / SELinux /
+# APEX / (--deep) unresolved-NEEDED scan / (--flash) fastboot recipe.
+# Nothing needs root. WARN = first-boot/camera/cosmetic; FAIL = fix before flash.
 
 set -u
-OUT="${OUT:-out/target/product/taiko}"
-DEEP=0; [ "${1:-}" = "--deep" ] && DEEP=1
 
-# scatter-derived partition sizes (bytes)
-SUPER_MAX=11811160064          # 0x2c0000000
-BOOT_MAX=67108864              # 0x4000000
-VENDORBOOT_MAX=67108864
-DTBO_MAX=8388608               # 0x800000
+# ---- locate TOP + OUT --------------------------------------------------------
+SELF="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TOP="${TOP:-$(cd "$SELF/../../../.." 2>/dev/null && pwd)}"
+[ -d "$TOP/build/soong" ] || TOP="$(pwd)"
+OUT="${OUT:-$TOP/out/target/product/taiko}"
+SOONG_OUT="${SOONG_OUT:-$TOP/out/soong}"
+DT="$TOP/device/xiaomi/taiko"
+DEEP=0; FLASH=0
+for a in "$@"; do case "$a" in --deep) DEEP=1;; --flash) FLASH=1;; esac; done
 
-P=0; W=0; F=0
-c_g=$'\e[32m'; c_y=$'\e[33m'; c_r=$'\e[31m'; c_b=$'\e[36m'; c_0=$'\e[0m'
+# scatter (MT6789_Android_scatter.txt) partition sizes, bytes
+SUPER_MAX=11811160064          # 0x2c0000000  (11 GiB)
+GROUP_MAX=11806965760          # super - 4 MiB LP metadata
+BOOT_MAX=67108864             ; VENDORBOOT_MAX=67108864 ; DTBO_MAX=8388608
+
+P=0; W=0; F=0; FAILS=()
+if [ -t 1 ]; then c_g=$'\e[32m';c_y=$'\e[33m';c_r=$'\e[31m';c_b=$'\e[36m';c_d=$'\e[2m';c_0=$'\e[0m'
+else c_g= ;c_y= ;c_r= ;c_b= ;c_d= ;c_0= ; fi
 pass(){ P=$((P+1)); printf "  ${c_g}PASS${c_0} %s\n" "$*"; }
 warn(){ W=$((W+1)); printf "  ${c_y}WARN${c_0} %s\n" "$*"; }
-fail(){ F=$((F+1)); printf "  ${c_r}FAIL${c_0} %s\n" "$*"; }
+fail(){ F=$((F+1)); FAILS+=("$*"); printf "  ${c_r}FAIL${c_0} %s\n" "$*"; }
+info(){ printf "  ${c_d}%s${c_0}\n" "$*"; }
 sec(){ printf "\n${c_b}== %s ==${c_0}\n" "$*"; }
 have(){ command -v "$1" >/dev/null 2>&1; }
+sz(){ stat -c%s "$1" 2>/dev/null || echo 0; }
+mib(){ echo $(( $(sz "$1") / 1048576 )); }
 
-if [ ! -d "$OUT" ]; then
-  echo "OUT dir '$OUT' not found - run from the build root, or set OUT=" >&2
-  exit 2
-fi
-echo "OUT = $OUT"
+[ -d "$OUT" ] || { echo "OUT '$OUT' not found - run from the build root or set OUT=" >&2; exit 2; }
+echo "TOP  = $TOP"
+echo "OUT  = $OUT"
+RE=readelf; have llvm-readelf && RE=llvm-readelf
 
 # ---------------------------------------------------------------------------
 sec "Build artifacts"
 z=$(ls -1 "$OUT"/lineage-*.zip 2>/dev/null | grep -v -- '-img-' | head -1)
 if [ -n "$z" ]; then
-  s=$(stat -c%s "$z"); hs=$(( s / 1048576 ))
-  [ "$s" -gt 700000000 ] && pass "OTA zip: $(basename "$z") (${hs} MiB)" \
-                         || warn "OTA zip small: $(basename "$z") (${hs} MiB)"
-else
-  warn "no lineage-*.zip (mka bacon not run, or images-only build)"
-fi
+  [ "$(sz "$z")" -gt 700000000 ] && pass "OTA zip $(basename "$z") ($(mib "$z") MiB)" \
+    || warn "OTA zip suspiciously small: $(basename "$z") ($(mib "$z") MiB)"
+else warn "no lineage-*.zip (mka bacon not run / images-only build)"; fi
 imgz=$(ls -1 "$OUT"/lineage-*-img-*.zip 2>/dev/null | head -1)
-[ -n "$imgz" ] && pass "fastboot img zip: $(basename "$imgz")" \
-               || warn "no *-img-*.zip (needed for 'fastboot update')"
-
+[ -n "$imgz" ] && pass "fastboot img zip $(basename "$imgz")" || warn "no *-img-*.zip"
 for i in boot.img vendor_boot.img dtbo.img vbmeta.img vbmeta_system.img vbmeta_vendor.img; do
-  [ -s "$OUT/$i" ] && pass "$i ($(stat -c%s "$OUT/$i") B)" || fail "$i missing"
+  [ -s "$OUT/$i" ] && pass "$i ($(sz "$OUT/$i") B)" || fail "$i missing"
 done
-if [ -s "$OUT/super.img" ]; then
-  pass "super.img ($(( $(stat -c%s "$OUT/super.img") / 1048576 )) MiB)"
-elif [ -s "$OUT/super_empty.img" ]; then
-  pass "super_empty.img (retrofit/fastbootd path)"
-else
-  warn "no super.img / super_empty.img"
-fi
+if   [ -s "$OUT/super.img" ];        then pass "super.img ($(mib "$OUT/super.img") MiB)"
+elif [ -s "$OUT/super_empty.img" ];  then pass "super_empty.img (fastbootd path)"
+else warn "no super.img / super_empty.img"; fi
+for i in system.img vendor.img product.img system_ext.img vendor_dlkm.img odm_dlkm.img system_dlkm.img; do
+  [ -s "$OUT/$i" ] && info "  $i $(mib "$OUT/$i") MiB"
+done
 
 # ---------------------------------------------------------------------------
 sec "Partition size vs scatter"
-chk_sz(){ # file  max  name
-  [ -s "$1" ] || { warn "$3: image absent"; return; }
-  local s; s=$(stat -c%s "$1")
-  if [ "$s" -le "$2" ]; then pass "$3 $s <= $2"
-  else fail "$3 $s > $2  (won't flash)"; fi
-}
-chk_sz "$OUT/boot.img"        "$BOOT_MAX"       "boot.img"
-chk_sz "$OUT/vendor_boot.img" "$VENDORBOOT_MAX" "vendor_boot.img"
-chk_sz "$OUT/dtbo.img"        "$DTBO_MAX"       "dtbo.img"
-if [ -s "$OUT/super.img" ]; then chk_sz "$OUT/super.img" "$SUPER_MAX" "super.img"; fi
-# logical partitions must fit the group (super - 4 MiB)
-tot=0
-for i in system system_ext product vendor vendor_dlkm odm_dlkm system_dlkm; do
-  [ -s "$OUT/$i.img" ] && tot=$(( tot + $(stat -c%s "$OUT/$i.img") ))
-done
-if [ "$tot" -gt 0 ]; then
-  if [ "$tot" -le 11806965760 ]; then pass "sum(logical imgs) $tot <= group 11806965760"
-  else fail "sum(logical imgs) $tot > group 11806965760"; fi
+chk(){ [ -s "$1" ] || { warn "$3: absent"; return; }
+       [ "$(sz "$1")" -le "$2" ] && pass "$3 $(sz "$1") <= $2" || fail "$3 $(sz "$1") > $2  (won't flash)"; }
+chk "$OUT/boot.img"        "$BOOT_MAX"       "boot.img"
+chk "$OUT/vendor_boot.img" "$VENDORBOOT_MAX" "vendor_boot.img"
+chk "$OUT/dtbo.img"        "$DTBO_MAX"       "dtbo.img"
+[ -s "$OUT/super.img" ] && chk "$OUT/super.img" "$SUPER_MAX" "super.img"
+tot=0; for i in system system_ext product vendor vendor_dlkm odm_dlkm system_dlkm; do
+  [ -s "$OUT/$i.img" ] && tot=$(( tot + $(sz "$OUT/$i.img") )); done
+[ "$tot" -gt 0 ] && { [ "$tot" -le "$GROUP_MAX" ] \
+  && pass "sum(logical imgs) $tot <= group $GROUP_MAX (headroom $(( (GROUP_MAX-tot)/1048576 )) MiB)" \
+  || fail "sum(logical imgs) $tot > group $GROUP_MAX"; }
+mi="$SOONG_OUT/.intermediates/../../target/product/taiko/misc_info.txt"
+[ -f "$OUT/misc_info.txt" ] && mi="$OUT/misc_info.txt"
+[ -f "$mi" ] && grep -qE "super_partition_size=$SUPER_MAX" "$mi" \
+  && pass "misc_info super_partition_size = $SUPER_MAX" \
+  || info "  (misc_info.txt not checked)"
+
+# ---------------------------------------------------------------------------
+sec "Generated-makefile hygiene (Round 49 regression class)"
+vmk=$(ls -1 "$TOP"/vendor/xiaomi/taiko/*/taiko-vendor.mk "$TOP"/vendor/xiaomi/taiko/xiaomi/*.mk 2>/dev/null | head -1)
+if [ -n "$vmk" ] && [ -f "$vmk" ]; then
+  # ELF (.so) or .apk/.jar landing in PRODUCT_COPY_FILES = "found ELF prebuilt in PRODUCT_COPY_FILES"
+  bad=$(grep -oE '[^ ]+\.(so|apk|jar):' "$vmk" 2>/dev/null | grep -c '.')
+  [ "$bad" -eq 0 ] && pass "no .so/.apk/.jar in PRODUCT_COPY_FILES ($(basename "$vmk"))" \
+    || { fail "$bad ELF/APK/JAR entr(y|ies) in PRODUCT_COPY_FILES of $(basename "$vmk")"
+         grep -oE '[^ ]+\.(so|apk|jar):' "$vmk" | head -5 | sed 's/^/      /'; }
+  grep -q 'check_elf_files: false' "$TOP"/vendor/xiaomi/taiko/*.bp 2>/dev/null \
+    && pass "Android.bp carries check_elf_files: false (blanket DISABLE_CHECKELF)" \
+    || warn "no check_elf_files:false seen in generated Android.bp"
+else
+  warn "generated vendor/xiaomi/taiko/*/taiko-vendor.mk not found - run extract-files.py"
 fi
 
 # ---------------------------------------------------------------------------
-sec "Round-48 bet: dropped blobs must be provided by source"
-# these were removed from proprietary-files.txt on the assumption a source
-# module installs them. If any is missing from the built vendor image, restore
-# that blob line.
-# lib64 miss = FAIL (restore the blob); lib (32-bit) miss = WARN only, since a
-# core_64_bit_only build ships little/no 32-bit vendor.
+sec "Round 21/28/46-48 drops: source must provide the file"
 have32=0; [ "$(find "$OUT/vendor/lib" -maxdepth 2 -name '*.so' 2>/dev/null | head -30 | wc -l)" -ge 25 ] && have32=1
-chk_src(){ # path  [soft]
-  if [ -e "$OUT/$1" ]; then pass "src provides $1"; return; fi
-  if [ "${2:-}" = soft ]; then warn "absent (32-bit, probably fine): $1"; else fail "MISSING $1  -> restore the blob"; fi
-}
+src(){ [ -e "$OUT/$1" ] && pass "src: $1" \
+       || { [ "${2:-}" = soft ] && warn "absent (32-bit, likely fine): $1" || fail "MISSING $1  -> restore that proprietary-files.txt line"; }; }
 for m in libaecsw libagc1sw libagc2sw libbassboostsw libbundleaidl libdownmixaidl \
          libdynamicsprocessingaidl libenvreverbsw libequalizersw libextensioneffect \
          libloudnessenhanceraidl libnssw libpreprocessingaidl libpresetreverbsw \
          libreverbaidl libvirtualizersw libvisualizeraidl libvolumesw; do
-  chk_src "vendor/lib64/soundfx/$m.so"
-  [ "$have32" -eq 1 ] && chk_src "vendor/lib/soundfx/$m.so" soft
+  src "vendor/lib64/soundfx/$m.so"
+  [ "$have32" -eq 1 ] && src "vendor/lib/soundfx/$m.so" soft
 done
-chk_src "vendor/lib64/mediadrm/libdrmclearkeyplugin.so"
-chk_src "vendor/lib64/mediacas/libclearkeycasplugin.so"
-chk_src "vendor/lib64/libwpa_client.so"
-chk_src "vendor/lib64/libhidparser.so"
-chk_src "vendor/bin/hw/android.hardware.contexthub-service.tinysys"   # Round 46
-chk_src "vendor/lib64/chre_atoms_log.so"
-chk_src "vendor/lib64/hw/sensors.dynamic_sensor_hal.so"               # Round 47
-chk_src "vendor/bin/hw/android.hardware.health-service.example"       # Round 21
-chk_src "vendor/bin/hw/android.hardware.sensors-service.multihal"     # Round 18
-chk_src "vendor/bin/hw/wpa_supplicant"; chk_src "vendor/bin/hw/hostapd"
+src "vendor/lib64/mediadrm/libdrmclearkeyplugin.so"
+src "vendor/lib64/mediacas/libclearkeycasplugin.so"
+src "vendor/lib64/libwpa_client.so"
+src "vendor/lib64/libhidparser.so"
+src "vendor/bin/hw/android.hardware.contexthub-service.tinysys"   # R46
+src "vendor/lib64/chre_atoms_log.so"; src "vendor/lib64/chremetrics-cpp.so"
+src "vendor/lib64/hw/sensors.dynamic_sensor_hal.so"               # R47
+src "vendor/bin/hw/android.hardware.health-service.example"       # R21
+src "vendor/bin/hw/android.hardware.sensors-service.multihal"     # R18
+src "vendor/bin/hw/wpa_supplicant"; src "vendor/bin/hw/hostapd"   # R27/48
+src "vendor/etc/vintf/manifest/android.hardware.audio.effect.service-aidl.xml" soft  # source frag OR our manifest_audio_aidl.xml
+src "vendor/etc/bpf/filterPowerSupplyEvents.o"                    # R21
+src "vendor/bin/mkshrc" soft ; src "vendor/etc/mkshrc" soft       # R24
 
 # ---------------------------------------------------------------------------
-sec "Key MTK / Xiaomi blobs still installed"
+sec "Kept MTK / Xiaomi blobs"
 for f in \
   vendor/bin/hw/camerahalserver \
   vendor/bin/hw/android.hardware.audio.service-aidl.mediatek \
   vendor/bin/hw/android.hardware.security.keymint@4.0-service.mitee \
   vendor/bin/hw/android.hardware.gatekeeper-service.mitee \
+  vendor/bin/hw/vendor.mediatek.hardware.aee@V1-service \
+  vendor/bin/hw/vendor.mediatek.hardware.mtkpower-service.mediatek \
   vendor/lib64/hw/mt6789/android.hardware.graphics.allocator-V2-mediatek.so \
   vendor/lib64/hw/hwcomposer.mtk_common.so \
   vendor/lib64/hw/mt6789/mapper.mediatek.so \
-  vendor/lib64/hw/android.hardware.audio.core-impl-mediatek.so \
+  vendor/lib64/android.hardware.audio.core-impl-mediatek.so \
   vendor/lib64/android.hardware.bluetooth.audio-impl-mediatek.so \
+  vendor/lib64/hw/android.hardware.sensors@2.X-subhal-mediatek.so \
   vendor/etc/sensors/hals.conf \
   vendor/etc/fstab.mt6789 ; do
   [ -e "$OUT/$f" ] && pass "$f" || fail "$f MISSING"
 done
-
-# ---------------------------------------------------------------------------
-sec "VINTF (assembled device manifest)"
-vm="$OUT/vendor/etc/vintf/manifest.xml"
-if [ -s "$vm" ]; then
-  pass "manifest.xml present ($(wc -l <"$vm") lines)"
-  for n in android.hardware.audio.core android.hardware.audio.effect \
-           android.hardware.camera.provider vendor.mediatek.hardware.mtkpower \
-           android.hardware.graphics.allocator android.hardware.graphics.composer3 \
-           android.hardware.security.keymint android.hardware.health; do
-    grep -q "$n" "$vm" && pass "  HAL declared: $n" || warn "  HAL not in manifest: $n"
-  done
-  grep -q '<sepolicy>' "$vm" && grep -q '202504' "$vm" \
-    && pass "  sepolicy target-version 202504" || warn "  sepolicy version tag not 202504"
-else
-  fail "manifest.xml missing"
-fi
-fcm="$OUT/vendor/etc/vintf/compatibility_matrix.device.xml"
-[ -s "$fcm" ] && pass "device compat matrix present" || warn "no device compat matrix (checkvintf may still pass)"
-if have checkvintf && [ -s "$vm" ]; then
-  if checkvintf --check-compat "$OUT" >/tmp/_cv.log 2>&1; then pass "checkvintf --check-compat OK"
-  else warn "checkvintf --check-compat complained (see /tmp/_cv.log)"; fi
-fi
-
-# ---------------------------------------------------------------------------
-sec "Kernel modules"
-chk_modlist(){ # dir  label
-  local d="$OUT/$1" ml="$OUT/$1/modules.load"
-  [ -d "$d" ] || { warn "$2: dir absent"; return; }
-  local ko; ko=$(ls -1 "$d"/*.ko 2>/dev/null | wc -l)
-  [ -s "$ml" ] || { fail "$2: modules.load missing (dir has $ko .ko)"; return; }
-  local n bad=0
-  while read -r m; do [ -z "$m" ] && continue
-    [ -e "$d/$m" ] || { bad=$((bad+1)); [ "$bad" -le 3 ] && echo "      missing: $m"; }
-  done < "$ml"
-  n=$(grep -c . "$ml")
-  [ "$bad" -eq 0 ] && pass "$2: $n in modules.load, $ko .ko, all resolve" \
-                   || fail "$2: $bad modules.load entries have no .ko"
-}
-chk_modlist vendor_dlkm/lib/modules  "vendor_dlkm"
-chk_modlist system_dlkm/lib/modules  "system_dlkm"
-for d in "$OUT/vendor_ramdisk/lib/modules" "$OUT"/obj/PACKAGING/depmod_VENDOR_RAMDISK*/modules ; do
-  [ -d "$d" ] && { ko=$(ls -1 "$d"/*.ko 2>/dev/null|wc -l); pass "vendor_ramdisk modules dir: $ko .ko ($d)"; break; }
+# dropped-on-purpose: these must be GONE
+for f in vendor/bin/aee_aedv64_v2 vendor/bin/aee_dumpstatev_v2 vendor/bin/aeev_v2 \
+         vendor/bin/hw/vendor.mediatek.hardware.aee@1.1-service \
+         vendor/bin/hw/android.hardware.contexthub-service.tinysys.blob \
+         vendor/lib64/libmtkcam.mcsspolicy.so vendor/lib64/libmtkcam_capture_request_monitor.so \
+         vendor/etc/aconfig/flag.info vendor/etc/aconfig_flags.pb ; do
+  [ -e "$OUT/$f" ] && warn "expected-gone still present: $f" || info "  gone (ok): $f"
 done
 
 # ---------------------------------------------------------------------------
+sec "MVPU island (Round 49b)"
+for f in libmvpu_wrapper.so libmvpu_engine.so libmvpu_runtime.so libmvpuop_mtk_cv.so \
+         libmvpuop_mtk_nn.so libswtcc.so libultrahdr_mtk.so ; do
+  [ -e "$OUT/vendor/lib64/$f" ] && pass "vendor/lib64/$f" || fail "vendor/lib64/$f MISSING (libswtcc/libultrahdr_mtk hard-NEED libmvpu_wrapper)"
+done
+n=$(find "$OUT/vendor/lib64" -name 'libmvpu*.so' 2>/dev/null | wc -l)
+[ "$n" -ge 40 ] && pass "$n libmvpu* libs in vendor/lib64" || warn "only $n libmvpu* libs (expected ~43)"
+
+# ---------------------------------------------------------------------------
+sec "VINTF"
+vm="$OUT/vendor/etc/vintf/manifest.xml"
+if [ -s "$vm" ]; then
+  pass "device manifest present ($(wc -l <"$vm") lines)"
+  for n in android.hardware.audio.core android.hardware.audio.effect \
+           android.hardware.camera.provider vendor.mediatek.hardware.mtkpower \
+           android.hardware.graphics.allocator android.hardware.graphics.composer3 \
+           android.hardware.security.keymint android.hardware.gatekeeper \
+           android.hardware.health android.hardware.sensors android.hardware.usb; do
+    grep -q "<name>$n</name>" "$vm" && pass "  HAL: $n" || warn "  HAL not declared: $n"
+  done
+  grep -q '<sepolicy>' "$vm" && grep -q '202504' "$vm" && pass "  sepolicy 202504" || warn "  sepolicy tag != 202504"
+else fail "device manifest.xml missing"; fi
+fcm="$OUT/vendor/etc/vintf/compatibility_matrix.device.xml"
+if [ -s "$fcm" ]; then
+  pass "device compat matrix present"
+  miss=0
+  for n in vendor.dolby.dms vendor.xiaomi.hardware.micharge vendor.xiaomi.hw.touchfeature \
+           vendor.xiaomi.sensor.citsensorservice vendor.xiaomi.hardware.displayfeature_aidl \
+           vendor.xiaomi.hardware.mtkblackbox ; do
+    grep -q "$n" "$fcm" || { miss=$((miss+1)); warn "  proprietary HAL not in device FCM: $n"; }
+  done
+  [ "$miss" -eq 0 ] && pass "  Round-35 proprietary HALs all in device FCM"
+else warn "no compatibility_matrix.device.xml"; fi
+if have checkvintf; then
+  if checkvintf --check-compat "$OUT" >/tmp/_cv.log 2>&1; then pass "checkvintf --check-compat OK"
+  else fail "checkvintf --check-compat failed (/tmp/_cv.log)"; sed 's/^/      /' /tmp/_cv.log | head -12; fi
+else warn "checkvintf not on PATH - OTA-time compat not verified here"; fi
+
+# ---------------------------------------------------------------------------
+sec "Kernel modules"
+kmod(){ local d="$OUT/$1" ml="$OUT/$1/modules.load"
+  [ -d "$d" ] || { warn "$2: dir absent"; return; }
+  local ko; ko=$(ls -1 "$d"/*.ko 2>/dev/null | wc -l)
+  [ -s "$ml" ] || { fail "$2: modules.load missing ($ko .ko present)"; return; }
+  local bad=0 n; n=$(grep -c . "$ml")
+  while read -r m; do [ -z "$m" ] && continue
+    [ -e "$d/$m" ] || { bad=$((bad+1)); [ "$bad" -le 3 ] && info "      no .ko for: $m"; }
+  done < "$ml"
+  [ "$bad" -eq 0 ] && pass "$2: $n in modules.load, $ko .ko, all resolve" \
+                   || fail "$2: $bad modules.load entries have no .ko"
+  [ -e "$d/modules.dep" ] && pass "$2: modules.dep generated (depmod ran)" || warn "$2: no modules.dep"
+}
+kmod vendor_dlkm/lib/modules  "vendor_dlkm"
+kmod system_dlkm/lib/modules  "system_dlkm"
+vrd=$(find "$OUT" -path '*vendor_ramdisk*/lib/modules' -o -path '*VENDOR_RAMDISK*/modules' 2>/dev/null | head -1)
+[ -n "$vrd" ] && pass "vendor_boot ramdisk modules: $(ls -1 "$vrd"/*.ko 2>/dev/null | wc -l) .ko" \
+             || warn "vendor_boot ramdisk modules dir not located"
+
+# ---------------------------------------------------------------------------
 sec "fstab"
-for f in "$OUT/vendor/etc/fstab.mt6789" \
-         "$OUT/vendor_ramdisk/first_stage_ramdisk/fstab.mt6789" \
-         "$OUT/recovery/root/first_stage_ramdisk/fstab.mt6789"; do
-  [ -s "$f" ] && pass "$(echo "$f"|sed "s#$OUT/##")" || warn "absent: $(echo "$f"|sed "s#$OUT/##")"
+for f in "vendor/etc/fstab.mt6789" \
+         "vendor_ramdisk/first_stage_ramdisk/fstab.mt6789" \
+         "recovery/root/first_stage_ramdisk/fstab.mt6789"; do
+  [ -s "$OUT/$f" ] && pass "$f" || warn "absent: $f"
 done
 fst="$OUT/vendor/etc/fstab.mt6789"
 if [ -s "$fst" ]; then
   grep -qE '^\s*system\s+/system\s+erofs' "$fst" && grep -qE '^\s*system\s+/system\s+ext4' "$fst" \
-    && pass "  system: erofs+ext4 dual lines" || warn "  system dual-fs lines?"
-  grep -q 'soc:odm/11230000.msdc' "$fst" && pass "  SD path fix (soc:odm/11230000.msdc)" \
-    || warn "  SD uevent path not the fixed one"
-  grep -q 'metadata_encryption' "$fst" && pass "  /data metadata encryption" || warn "  no metadata_encryption on /data"
+    && pass "  erofs+ext4 dual lines" || warn "  system dual-fs lines?"
+  grep -q 'soc:odm/11230000.msdc' "$fst" && pass "  SD path fix (soc:odm/11230000.msdc)" || warn "  SD uevent path not the fixed one"
+  grep -q 'keydirectory=/metadata/vold/metadata_encryption' "$fst" && pass "  /data metadata encryption" || warn "  no metadata_encryption on /data"
+  grep -qE '/data\s+f2fs.*checkpoint=fs' "$fst" && pass "  /data checkpoint=fs (Virtual A/B)" || warn "  /data checkpoint flag?"
   grep -qE 'mi_ext.*nofail' "$fst" && pass "  mi_ext nofail" || warn "  mi_ext line?"
+  grep -qE '^\s*system_dlkm .*avb=vbmeta_system' "$fst" && pass "  system_dlkm chained to vbmeta_system" || warn "  system_dlkm avb chain?"
 fi
+
+# ---------------------------------------------------------------------------
+sec "Recovery"
+[ -s "$OUT/vendor_boot.img" ] && pass "recovery rides in vendor_boot (no recovery.img expected)" || true
+[ -e "$OUT/recovery.img" ] && warn "recovery.img built - device has no recovery partition (BOARD_MOVE_RECOVERY_RESOURCES_TO_VENDOR_BOOT)" || info "  no recovery.img (correct)"
+[ -e "$OUT/vendor_ramdisk/first_stage_ramdisk/fstab.mt6789" ] && pass "first-stage fstab in vendor ramdisk" || warn "first-stage fstab not in vendor ramdisk"
 
 # ---------------------------------------------------------------------------
 sec "AVB"
 if have avbtool; then
   if avbtool info_image --image "$OUT/vbmeta.img" >/tmp/_avb.log 2>&1; then
-    grep -q 'Flags:\s*3' /tmp/_avb.log && pass "vbmeta flags = 3 (verity+verification disabled, bring-up)" \
-      || warn "vbmeta flags != 3 ($(grep -i flags /tmp/_avb.log | head -1))"
+    grep -qE 'Flags:[[:space:]]*3' /tmp/_avb.log && pass "vbmeta flags=3 (verity+verification disabled - bring-up)" \
+      || warn "vbmeta flags != 3: $(grep -i flags /tmp/_avb.log | head -1 | sed 's/^ *//')"
+    locs=$(grep -oE 'Rollback Index Location:[[:space:]]*[0-9]+' /tmp/_avb.log | awk '{print $NF}' | sort -n | tr '\n' ' ')
+    [ -n "$locs" ] && pass "  rollback index locations: $locs" || info "  (no chain rollback locations parsed)"
     for c in vbmeta_system vbmeta_vendor boot vendor_boot; do
-      grep -q "Partition Name:\s*$c" /tmp/_avb.log && pass "  chained: $c" || warn "  no chain descriptor for $c"
+      grep -qE "Partition Name:[[:space:]]*$c" /tmp/_avb.log && pass "  chained: $c" || warn "  no chain descriptor: $c"
     done
-  else warn "avbtool info_image failed (see /tmp/_avb.log)"; fi
-else
-  warn "avbtool not in PATH - skipping AVB descriptor check"
-fi
+  else warn "avbtool info_image failed (/tmp/_avb.log)"; fi
+else warn "avbtool not on PATH - AVB descriptors not checked"; fi
 
 # ---------------------------------------------------------------------------
-sec "Props"
+sec "build.prop (Round 29-30)"
 bp="$OUT/vendor/build.prop"
 if [ -s "$bp" ]; then
   grep -q '^ro.vendor.build.security_patch=2026-06-05' "$bp" && pass "vendor SPL 2026-06-05" \
-    || warn "vendor SPL: $(grep ro.vendor.build.security_patch "$bp")"
+    || warn "vendor SPL: $(grep '^ro.vendor.build.security_patch=' "$bp")"
   grep -q '^ro.product.vendor.name=taiko' "$bp" && pass "ro.product.vendor.name=taiko" \
     || warn "ro.product.vendor.name = $(grep '^ro.product.vendor.name=' "$bp")"
-else
-  fail "vendor/build.prop missing"
-fi
+  n=$(grep -c '^ro.vendor.build.version.sdk_full=' "$bp"); [ "$n" -le 1 ] && pass "no sdk_full dup in vendor" || fail "$n sdk_full lines in vendor/build.prop (Round 30)"
+  ab=$(grep -oE '^ro.vendor.build.ab_ota_partitions=.*' "$bp" | cut -d= -f2)
+  case "$ab" in *,*,*,*,*,*,*,*,*,*,*) pass "ro.vendor.build.ab_ota_partitions = full list";; *) warn "ab_ota_partitions short: $ab (dump had only boot,product,system,vendor)";; esac
+else fail "vendor/build.prop missing"; fi
 sp="$OUT/system/build.prop"
 [ -s "$sp" ] && { grep -q '^ro.build.version.sdk=36' "$sp" && pass "SDK 36" || warn "SDK: $(grep '^ro.build.version.sdk=' "$sp")"; }
+for pf in vendor odm; do
+  n=$(grep -rc '^ro.build.version.sdk_full=\|^ro.'"$pf"'.build.version.sdk_full=' "$OUT/$pf/build.prop" 2>/dev/null || echo 0)
+done
+grep -qs '^ro.sf.lcd_density=' "$OUT/vendor/build.prop" "$OUT/system/build.prop" && pass "ro.sf.lcd_density set" || warn "ro.sf.lcd_density not found"
 
 # ---------------------------------------------------------------------------
 sec "SELinux"
 for f in vendor/etc/selinux/precompiled_sepolicy vendor/etc/selinux/vendor_sepolicy.cil \
-         system/etc/selinux/plat_sepolicy.cil ; do
+         vendor/etc/selinux/plat_sepolicy_and_mapping.sha256 \
+         system/etc/selinux/plat_sepolicy.cil odm/etc/selinux/odm_sepolicy.cil ; do
   [ -e "$OUT/$f" ] && pass "$f" || warn "$f absent"
 done
+if [ -f "$OUT/vendor/etc/selinux/plat_sepolicy_and_mapping.sha256" ] && [ -f "$OUT/system/etc/selinux/plat_sepolicy.cil" ]; then
+  h1=$(cat "$OUT/vendor/etc/selinux/plat_sepolicy_and_mapping.sha256")
+  h2=$( { cat "$OUT/system/etc/selinux/plat_sepolicy.cil" "$OUT"/system/etc/selinux/mapping/*.cil 2>/dev/null; } | sha256sum | cut -d' ' -f1)
+  [ "$h1" = "$h2" ] && pass "precompiled_sepolicy hash matches plat cil (fast boot path)" \
+                    || warn "precompiled_sepolicy stale vs plat cil - vendor_init recompiles at boot (slower, still works)"
+fi
+
+# ---------------------------------------------------------------------------
+sec "APEX (Round 48: built, not blob)"
+for a in com.android.hardware.cas com.google.android.widevine.nonupdatable; do
+  f=$(ls -1 "$OUT"/vendor/apex/$a.apex "$OUT"/vendor/apex/$a.capex 2>/dev/null | head -1)
+  [ -n "$f" ] && pass "vendor apex: $(basename "$f")" || warn "vendor apex $a absent (ok if not required by product)"
+done
+n=$(find "$OUT/vendor/apex" -name '*.apex' -o -name '*.capex' 2>/dev/null | wc -l)
+info "  $n apex in vendor/apex"
 
 # ---------------------------------------------------------------------------
 if [ "$DEEP" -eq 1 ]; then
-  sec "Deep: unresolved NEEDED in built vendor .so (first-boot dlopen risk)"
-  have llvm-readelf && RE=llvm-readelf || RE=readelf
-  # build a set of provided sonames from vendor + system + apex
+  sec "Deep: unresolved NEEDED across the built vendor image"
   tmp=$(mktemp)
-  { for d in "$OUT"/vendor/lib64 "$OUT"/vendor/lib64/*/ "$OUT"/vendor/lib64/hw \
-             "$OUT"/system/lib64 "$OUT"/system/lib64/*/ \
-             "$OUT"/vendor/lib "$OUT"/vendor/lib/*/ "$OUT"/system/lib ; do
-      [ -d "$d" ] && ls -1 "$d" 2>/dev/null | grep '\.so$'
+  { for d in "$OUT"/vendor/lib64 "$OUT"/vendor/lib64/* "$OUT"/vendor/lib64/hw \
+             "$OUT"/vendor/lib "$OUT"/vendor/lib/* "$OUT"/vendor/lib/hw \
+             "$OUT"/system/lib64 "$OUT"/system/lib64/* "$OUT"/system/lib "$OUT"/system/lib/* ; do
+      [ -d "$d" ] && ls -1 "$d" 2>/dev/null | grep -E '\.so$'
     done
-    # apex-bundled libs
-    find "$OUT"/vendor/apex "$OUT"/system/apex -name '*.so' 2>/dev/null | xargs -r -n1 basename
+    find "$OUT"/vendor/apex "$OUT"/system/apex -name '*.so' 2>/dev/null -printf '%f\n'
   } | sort -u > "$tmp"
-  bad=0
+  KNOWN_DEGRADED='NSCam|NS3Av3|NSIspTuning|libc\+\+_shared|audio_utils.*mutex|libmvpu'
+  bad=0; deg=0
   while IFS= read -r so; do
     b=$(basename "$so")
     while IFS= read -r nd; do
       [ -z "$nd" ] && continue
       grep -qxF "$nd" "$tmp" && continue
-      case "$nd" in libc.so|libm.so|libdl.so|liblog.so|libc++.so|ld-android.so|libc++_shared.so) continue;; esac
-      bad=$((bad+1)); printf "  ${c_y}dlopen?${c_0} %-42s needs %s\n" "$b" "$nd"
+      case "$nd" in libc.so|libm.so|libdl.so|liblog.so|libc++.so|ld-android.so) continue;; esac
+      bad=$((bad+1)); printf "  ${c_y}NEEDED?${c_0} %-40s -> %s\n" "$b" "$nd"
     done < <("$RE" -d "$so" 2>/dev/null | sed -n 's/.*(NEEDED).*\[\(.*\)\]/\1/p')
+    "$RE" --dyn-syms -W "$so" 2>/dev/null | awk '$4=="GLOBAL" && $7=="UND"{print $NF}' \
+      | grep -qE "$KNOWN_DEGRADED" && { deg=$((deg+1)); }
   done < <(find "$OUT"/vendor/lib64 "$OUT"/vendor/lib -name '*.so' 2>/dev/null)
   rm -f "$tmp"
-  [ "$bad" -eq 0 ] && pass "every vendor .so NEEDED resolves inside the image" \
-                   || warn "$bad unresolved NEEDED refs (expected for check_elf=False blobs; note for first-boot logcat)"
+  [ "$bad" -eq 0 ] && pass "every vendor .so DT_NEEDED resolves in the image" \
+                   || warn "$bad unresolved NEEDED (check_elf=off; note for first-boot logcat)"
+  [ "$deg" -gt 0 ] && warn "$deg libs carry known-degraded UND syms (camera NSCam / libc++_shared / audio mutex / mvpu) - expected, camera/HDR/ML first-boot work"
+fi
+
+# ---------------------------------------------------------------------------
+if [ "$FLASH" -eq 1 ]; then
+  sec "Flash recipe (unlocked bootloader, both slots)"
+  cat <<EOF
+  fastboot flash boot_a        "$OUT/boot.img"
+  fastboot flash boot_b        "$OUT/boot.img"
+  fastboot flash vendor_boot_a "$OUT/vendor_boot.img"
+  fastboot flash vendor_boot_b "$OUT/vendor_boot.img"
+  fastboot flash dtbo_a        "$OUT/dtbo.img"
+  fastboot flash dtbo_b        "$OUT/dtbo.img"
+  fastboot flash vbmeta_a         "$OUT/vbmeta.img"        --disable-verity --disable-verification
+  fastboot flash vbmeta_b         "$OUT/vbmeta.img"        --disable-verity --disable-verification
+  fastboot flash vbmeta_system_a  "$OUT/vbmeta_system.img" --disable-verity --disable-verification
+  fastboot flash vbmeta_vendor_a  "$OUT/vbmeta_vendor.img" --disable-verity --disable-verification
+  fastboot reboot fastboot
+  fastboot flash super         "$OUT/super.img"     # or: fastboot update "$imgz"
+  fastboot -w reboot                                # -w wipes userdata (first flash)
+  # first boot: adb wait-for-device && adb shell dmesg | grep -i 'avc: denied' ; adb logcat -b all
+EOF
 fi
 
 # ---------------------------------------------------------------------------
 printf "\n${c_b}== Summary ==${c_0}\n"
 printf "  ${c_g}%d PASS${c_0}   ${c_y}%d WARN${c_0}   ${c_r}%d FAIL${c_0}\n" "$P" "$W" "$F"
-[ "$F" -eq 0 ] && echo "  build looks flashable (WARNs are first-boot / camera / cosmetic)" \
-              || echo "  FAILs above must be resolved before flashing"
+if [ "$F" -gt 0 ]; then
+  printf "  ${c_r}FAILs:${c_0}\n"; for x in "${FAILS[@]}"; do printf "    - %s\n" "$x"; done
+  echo "  ^ resolve before flashing"
+else
+  echo "  no FAILs - build looks flashable (WARNs = first-boot / camera / cosmetic)"
+fi
 exit $(( F > 0 ? 1 : 0 ))
