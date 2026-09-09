@@ -108,8 +108,8 @@ and lists blobs with missing `NEEDED` libs — add `blob_fixups` and re-extract.
 ## Status (2026-09-09)
 
 Pushed to `kodeaqua/android_device_xiaomi_taiko_wip` `lineage-23.2`. Passed
-soong bootstrap + kati + the **full ninja compile** (35 fix rounds, logged
-below); now at **OTA packaging** — Round 35 fixed `checkvintf --check-compat`
+soong bootstrap + kati + ninja (36 fix rounds, logged
+below); at ~82% ninja (a check_elf_file on stale AEE dumper blobs, Round 36); Round 35 cleared OTA-time `checkvintf`
 (`Package OTA` / `ota_from_target_files` → `check_target_files_vintf.py`).
 Build runs on a separate machine — errors are pasted in and fixed here. Camera
 enabled; `configs/audio|media|wifi` = taiko's own; `BOARD_SUPER_PARTITION_SIZE`
@@ -121,6 +121,32 @@ for the fix-class cheat sheet.
 Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
+
+### Round 36 — `check_elf_file`: AEE v2 dumpers vs the 23.2 source `libaedv`
+
+`//vendor/xiaomi/taiko:aee_dumpstatev_v2 check elf file` +
+`:aee_aedv64_v2` (and `aeev_v2` has the same 32 unresolved syms):
+`error: Unresolved symbol: aee_chmod / aee_fprintf / fop_file_write_string /
+dop_create_dirs / rtt_dump_all_backtrace_by_name / ...`.
+
+These MTK "AEE" (Android Exception Engine) crash-dump helper binaries were built
+against HyperOS's `libaedv.so`, which exports a large `aee_*` / `fop_*` / `dop_*`
+/ `rtt_*` utility surface. `libaedv` is one of the source-collision modules
+(`device.mk` builds `hardware/mediatek/libaedv`), and the lineage-23.2 source
+`libaedv` exports **none** of those symbols — a whole different API, not a
+version skew. `check_elf_file` (`check_elf: true` on the extracted prebuilt)
+fails hard.
+
+Dropped `vendor/bin/{aee_aedv64_v2,aee_dumpstatev_v2,aeev_v2}` +
+`vendor/etc/init/aee_aedv64_v2.rc` from `proprietary-files.txt`. Kept
+`vendor.mediatek.hardware.aee@V1-service` (the AIDL AEE HAL - `readelf` shows it
+links `libdumpstateutil`/`libbase`, **not** `libaedv`, so it builds and still
+serves `IAee/AEE`), `libaedv`/`libladder` (source), `aee-commit`/`aee-config`.
+`rootdir/etc/init.aee.rc`'s `start aee_aedv64_v2` becomes a no-op, exactly like
+its already-dangling `start aee_aedv` / `start aee_aedv64` (host_init_verifier
+does not error on `start` of an undefined service). Android's native
+`tombstoned` / `crash_dump` cover crash forensics; MTK's proprietary AEE
+extended dumps are debug-only.
 
 ### Round 35 — OTA-time `checkvintf --check-compat`: proprietary vendor HALs not in any FCM
 

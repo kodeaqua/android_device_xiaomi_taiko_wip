@@ -1004,9 +1004,6 @@ vendor/bin/DFtool
 vendor/bin/MI_IC
 vendor/bin/MI_RIC
 vendor/bin/SoterProvisioningTool_mitee
-vendor/bin/aee_aedv64_v2
-vendor/bin/aee_dumpstatev_v2
-vendor/bin/aeev_v2
 vendor/bin/atcid
 vendor/bin/ated
 vendor/bin/audiocmdservice_atci
@@ -1086,7 +1083,6 @@ vendor/etc/gralloc/dpu_aeu.xml
 vendor/etc/gralloc/gpu.xml
 vendor/etc/gralloc/vpu.xml
 vendor/etc/init/FastSwitch.rc
-vendor/etc/init/aee_aedv64_v2.rc
 vendor/etc/init/atcid.rc
 vendor/etc/init/audiocmdservice_atci.rc
 vendor/etc/init/bootperf.rc
