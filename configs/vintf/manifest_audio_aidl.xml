@@ -1,6 +1,8 @@
 <!--
-    Input:
-        vendor/mediatek/proprietary/hardware/audio/common/service/service_aidl/android.hardware.audio.service-aidl.xml
+    MTK audio.core + audio.effect AIDL HALs (stock ships these as
+    android.hardware.audio.{service,effect}.service-aidl.xml fragments, whose
+    names collide with hardware/interfaces/audio/aidl/default). Merged here as a
+    2nd DEVICE_MANIFEST_FILE - see README Rounds 18 / 48.
 -->
 <manifest version="9.0" type="device">
     <hal format="aidl">
@@ -22,5 +24,10 @@
         <name>android.hardware.audio.core</name>
         <version>3</version>
         <fqname>IConfig/default</fqname>
+    </hal>
+    <hal format="aidl">
+        <name>android.hardware.audio.effect</name>
+        <version>3</version>
+        <fqname>IFactory/default</fqname>
     </hal>
 </manifest>

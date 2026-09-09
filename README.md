@@ -122,6 +122,41 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 48 — kati "overriding commands": batch of AOSP-source `/vendor` blobs
+
+`installs-lineage_taiko.mk` vs a make-side (`build/make/core/Makefile:148`)
+install rule. Ran on the build box:
+`awk -F: '/\/vendor\// && / : /' installs-lineage_taiko.mk ... | comm -12` with
+`proprietary-files.txt` install paths. Everything that turned out to be an
+AOSP-source component HyperOS ships verbatim in `/vendor`:
+
+- `vendor/lib*/soundfx/lib{aecsw,agc1sw,agc2sw,bassboostsw,bundleaidl,downmixaidl,
+  dynamicsprocessingaidl,envreverbsw,equalizersw,extensioneffect,
+  loudnessenhanceraidl,nssw,preprocessingaidl,presetreverbsw,reverbaidl,
+  virtualizersw,visualizeraidl,volumesw}.so` — `hardware/interfaces/audio/aidl/
+  default/*` DOES build & install these to `/vendor/lib*/soundfx/` after all
+  (corrects the Round-38 "enabled:false" read).
+- `vendor/lib*/mediadrm/lib{drmclearkeyplugin,mockdrmcryptoplugin}.so`,
+  `vendor/lib*/mediacas/libclearkeycasplugin.so` — `frameworks/av` clearkey.
+- `vendor/lib*/libwpa_client.so` — `external/wpa_supplicant_8` (source
+  supplicant, since Round 28).
+- `vendor/lib*/libkeystore-wifi-hidl.so` — `system/security` (Round 28 class).
+- `vendor/lib*/libhidparser.so` — `frameworks/native`.
+- `vendor/apex/com.android.hardware.cas.apex`,
+  `com.google.android.widevine.nonupdatable.apex` — built APEXes.
+- `vendor/app/{NetworkStack,Tethering}*ResOverlay/*.apk` (5) — mainline RROs.
+- `vendor/framework/androidx.camera.extensions.impl.dummy.jar` — `frameworks/ex`.
+- `vendor/etc/vintf/manifest/android.hardware.audio.effect.service-aidl.xml` —
+  `audio/aidl/default` (same as Round 18's audio.core fragment). Dropped the
+  blob; added the `audio.effect` / `IFactory/default` HAL to
+  `configs/vintf/manifest_audio_aidl.xml` (2nd `DEVICE_MANIFEST_FILE`).
+
+57 blob lines dropped. The MTK/Xiaomi `vintf/manifest/*.xml` fragments that also
+showed in the raw `comm` are blob-only (single install rule) - false positives,
+left alone.
+
+Re-run: `./setup-makefiles.py`.
+
 ### Round 47 — kati "overriding commands": `sensors.dynamic_sensor_hal`
 
 `overriding commands for target '.../vendor/lib/hw/sensors.dynamic_sensor_hal.so',
