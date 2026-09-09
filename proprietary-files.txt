@@ -478,7 +478,7 @@ vendor/lib64/libion_mtk.so
 vendor/lib64/libion_ulit.so
 vendor/lib64/libjpeg-alpha-oal_vendor.so
 vendor/lib64/libjpeg-alpha_vendor.so
-vendor/lib64/libmialgo_sd.so
+vendor/lib64/libmialgo_sd.so;DISABLE_CHECKELF
 vendor/lib64/libmorpho_HdrChecker.so
 vendor/lib64/libmorpho_ImageRefiner.so
 vendor/lib64/libmorpho_video_stabilizer.so
@@ -1668,8 +1668,8 @@ vendor/lib64/libkeystore-wifi-hidl.so
 vendor/lib64/libmbrainSDKv.so
 vendor/lib64/libmcve.so;DISABLE_CHECKELF
 vendor/lib64/libmfido_mitee.so
-vendor/lib64/libmialgo_ai_vision.so
-vendor/lib64/libmialgo_utils.so
+vendor/lib64/libmialgo_ai_vision.so;DISABLE_CHECKELF
+vendor/lib64/libmialgo_utils.so;DISABLE_CHECKELF
 vendor/lib64/libmialgoengine.so
 vendor/lib64/libmialgoengine2.so
 vendor/lib64/libmiface.so

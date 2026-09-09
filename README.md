@@ -122,6 +122,23 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 40 — `check_elf_file`: `libmialgo_*` NEEDED `libc++_shared.so`
+
+`//vendor/xiaomi/taiko:libmialgo_{utils,sd,ai_vision} check elf file`:
+`error: DT_NEEDED "libc++_shared.so" is not specified in shared_libs.`
+
+The `extract-files.py` `lib_fixups` `("libc++_shared",) -> "libc++"` rewrites the
+*generated `shared_libs`* list, but `check_elf_file` compares the blob's real
+`DT_NEEDED` (still literally `libc++_shared.so`) against it, so `libc++` !=
+`libc++_shared` still fails. `libc++_shared.so` is the NDK STL soname; neither
+the dump nor our tree ships `vendor/lib*/libc++_shared.so` (only 3 blobs need it,
+all Xiaomi MiAlgo camera-AI post-processing: `libmialgo_utils/sd/ai_vision`).
+`;DISABLE_CHECKELF` on the three. **Runtime:** these dlopen only from the MiCam
+algo path (night mode / AI scene / bokeh); if the vendor linker namespace can't
+resolve `libc++_shared.so` they just don't load — no effect on core camera or
+boot. Proper post-boot fix: `blob_fixup().replace_needed("libc++_shared.so",
+"libc++.so")` + full re-extract, or ship a renamed `libc++_shared` vendor blob.
+
 ### Round 39 — `check_elf_file`: `libmcve` versioned `AHardwareBuffer_*@LIBNATIVEWINDOW`
 
 `//vendor/xiaomi/taiko:libmcve check elf file`: `error: Unresolved symbol:
