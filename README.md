@@ -105,14 +105,22 @@ and lists blobs with missing `NEEDED` libs — add `blob_fixups` and re-extract.
 `./setup-makefiles.py` regenerates `Android.bp` from `proprietary-files.txt`
 *without* re-copying blobs (use it after line removals).
 
-## Status (2026-09-09) — FIRST FULL BUILD ✅
+## Status (2026-09-09) — BUILDS & VERIFIES CLEAN ✅ (not yet flashed)
 
-**`brunch taiko` completes.** `build completed successfully (19:09)` →
-`out/target/product/taiko/lineage-23.2-20260909-UNOFFICIAL-taiko.zip` +
-`lineage_taiko-ota.zip` (1.48 GB payload, 2115 ops, signed with test keys).
-Pushed to `kodeaqua/android_device_xiaomi_taiko_wip` `lineage-23.2`. 51 fix
-rounds (soong bootstrap → kati → ninja compile → OTA package → verify), all
-logged below.
+**`brunch taiko` completes** → `lineage-23.2-20260909-UNOFFICIAL-taiko.zip` +
+`lineage_taiko-ota.zip` (1.48 GB payload, 2115 ops, test-key signed).
+**`verify-build.sh --deep` (post Round 51): `0 FAIL · 117 PASS · 16 WARN`** —
+GPU/graphics loader paths all resolve, every vendor `.so` `DT_NEEDED` resolves,
+partition sizes fit the scatter, AVB chain + VINTF + fstab + kernel modules all
+good. The 16 WARNs are first-boot / cosmetic (audio pre-processing legacy lib,
+`libwpa_client`/`libhidparser`/CHRE/dynamic-sensor absences, sepolicy
+recompile-at-boot, Widevine L3, no img-zip). Pushed to
+`kodeaqua/android_device_xiaomi_taiko_wip` `lineage-23.2`. 51 fix rounds (soong
+bootstrap → kati → ninja compile → OTA package → verify), all logged below.
+
+**Next: flash to a device** (`verify-build.sh --flash` prints the recipe), then
+`adb shell dmesg | grep 'avc: denied'` + `adb logcat -b all` for the first-boot
+round (SELinux, camera, the WARN list above).
 
 Build-log review (Round 50): **zero errors, zero `FAILED`, zero `check_elf`
 failures**. All remaining log noise is benign and expected —
