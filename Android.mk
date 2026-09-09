@@ -280,7 +280,32 @@ MTK_SOC_SYMLINKS := \
     $(TARGET_OUT_VENDOR)/lib64/libstereoinfoaccessor_vsdof.so \
     $(TARGET_OUT_VENDOR)/lib64/libvcodec_utility_v3a.so \
     $(TARGET_OUT_VENDOR)/lib64/libvcodecdrv_v3a.so \
-    $(TARGET_OUT_VENDOR)/lib64/libvpudv3a_vcodec.so
+    $(TARGET_OUT_VENDOR)/lib64/libvpudv3a_vcodec.so \
+    $(TARGET_OUT_VENDOR)/lib/egl/libGLES_mali.so \
+    $(TARGET_OUT_VENDOR)/lib64/egl/libGLES_mali.so \
+    $(TARGET_OUT_VENDOR)/lib/hw/vulkan.mali.so \
+    $(TARGET_OUT_VENDOR)/lib64/hw/vulkan.mali.so \
+    $(TARGET_OUT_VENDOR)/lib/hw/mapper.mediatek.so \
+    $(TARGET_OUT_VENDOR)/lib64/hw/mapper.mediatek.so \
+    $(TARGET_OUT_VENDOR)/lib/hw/android.hardware.graphics.allocator-V2-mediatek.so \
+    $(TARGET_OUT_VENDOR)/lib64/hw/android.hardware.graphics.allocator-V2-mediatek.so \
+    $(TARGET_OUT_VENDOR)/lib/hw/vendor.mediatek.hardware.pq_aidl-impl.so \
+    $(TARGET_OUT_VENDOR)/lib64/hw/vendor.mediatek.hardware.pq_aidl-impl.so \
+    $(TARGET_OUT_VENDOR)/lib64/hw/android.hardware.camera.provider@2.6-impl-mediatek.so \
+    $(TARGET_OUT_VENDOR)/lib64/hw/vendor.mediatek.hardware.camera.ccap@1.0-impl.so \
+    $(TARGET_OUT_VENDOR)/lib64/hw/vendor.mediatek.hardware.camera.isphal_aidl@1.0-impl.so \
+    $(TARGET_OUT_VENDOR)/lib64/mtkcam/libmtkcam_streaminfo_plugin-p1stt.so
+
+# The subdir SoC symlinks above (egl/, hw/, mtkcam/) point one level down into
+# <dir>/mt6789/<name> - the generic rule's $(TARGET_BOARD_PLATFORM)/$(notdir $@)
+# already resolves to exactly that. egl/libGLES_mali.so + hw/vulkan.mali.so are
+# what the EGL/Vulkan loaders actually dlopen (egl.cfg says "0 1 mali"); without
+# them the Mali-G57 has no userspace driver. hw/mapper.mediatek.so +
+# hw/android.hardware.graphics.allocator-V2-mediatek.so are the gralloc mapper/
+# allocator impls SurfaceFlinger needs. These 19 stock symlinks were missing
+# from the first list (it only picked up the flat vendor/lib{,64}/*.so links);
+# the audio.primary/r_submix/sensors.mt6789 legacy-HIDL links are deliberately
+# NOT added - taiko is AIDL audio + sensors, those blobs aren't shipped.
 
 $(MTK_SOC_SYMLINKS):
 	@echo "Symlink: $@ -> $(TARGET_BOARD_PLATFORM)/$(notdir $@)"

@@ -110,8 +110,9 @@ and lists blobs with missing `NEEDED` libs — add `blob_fixups` and re-extract.
 **`brunch taiko` completes.** `build completed successfully (19:09)` →
 `out/target/product/taiko/lineage-23.2-20260909-UNOFFICIAL-taiko.zip` +
 `lineage_taiko-ota.zip` (1.48 GB payload, 2115 ops, signed with test keys).
-Pushed to `kodeaqua/android_device_xiaomi_taiko_wip` `lineage-23.2`. 49 fix
-rounds (soong bootstrap → kati → ninja compile → OTA package), all logged below.
+Pushed to `kodeaqua/android_device_xiaomi_taiko_wip` `lineage-23.2`. 51 fix
+rounds (soong bootstrap → kati → ninja compile → OTA package → verify), all
+logged below.
 
 Build-log review (Round 50): **zero errors, zero `FAILED`, zero `check_elf`
 failures**. All remaining log noise is benign and expected —
@@ -126,8 +127,10 @@ One cosmetic upstream quirk: `misc_info` `ab_partitions` carries a trailing
 empty `''` entry after the firmware partitions — harmless (payload generated &
 signed fine), not from our editable files.
 
-`tools/verify-build.sh` run against the built tree: **0 real FAILs.** The 24 it
-first flagged were script bugs (fixed) + non-blocking absences:
+`tools/verify-build.sh --deep` against the built tree found **one real bug**
+(Round 51: missing `egl/libGLES_mali.so` + 13 other SoC-subdir symlinks — no
+Mali GLES/Vulkan driver at the loader path; fixed in `Android.mk`). Everything
+else it first flagged was a script bug (fixed) or a non-blocking absence:
 - `android.hardware.audio.core-impl-mediatek.so` — present at `vendor/lib64/`
   (script wrongly looked under `hw/`). Audio HAL intact.
 - 19× `soundfx/*` — false. `configs/audio/audio_effects.xml` references the AOSP
@@ -187,6 +190,35 @@ fix, checkpoint, `system_dlkm` AVB chain) · recovery-in-vendor_boot · AVB
 Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
+
+### Round 51 - missing Mali/gralloc SoC symlinks (verify --deep catch)
+
+`verify-build.sh --deep` on the built tree flagged `vulkan.mali.so` and
+`libmtkcam_hal_aidl_provider.so` with unresolved `NEEDED` refs, and a direct
+check found **`vendor/lib{,64}/egl/libGLES_mali.so` absent**.
+
+Root cause: MTK ships each SoC lib as `<dir>/mt6789/<name>` + a bare symlink at
+the path the loader dlopens. `Android.mk`'s `MTK_SOC_SYMLINKS` list (built from
+the stock tree) only picked up the **flat** `vendor/lib{,64}/*.so` symlinks and
+missed the 19 that live in `egl/`, `hw/`, `mtkcam/` subdirs. Diff of stock
+symlinks vs the list:
+
+| Missing symlink | Impact |
+|---|---|
+| `egl/libGLES_mali.so` (32+64) | `egl.cfg` says `0 1 mali` → loader dlopens this exact path. Absent ⇒ Mali-G57 has **no GLES driver**, EGL falls back to swiftshader → SW-rendered UI on a 2560×1600 panel / bootanim crawl. |
+| `hw/vulkan.mali.so` (32+64) | Vulkan loader path — no HW Vulkan. |
+| `hw/mapper.mediatek.so` (32+64) | gralloc stable-c mapper SurfaceFlinger loads. |
+| `hw/android.hardware.graphics.allocator-V2-mediatek.so` (32+64) | allocator impl. |
+| `hw/…camera.provider@2.6-impl / ccap / isphal_aidl`, `hw/…pq_aidl-impl`, `mtkcam/libmtkcam_streaminfo_plugin-p1stt` | camera / PQ HAL impls. |
+
+Fix: added those 14 (real `mt6789/` target exists in `proprietary-files.txt`) to
+`MTK_SOC_SYMLINKS`. The generic rule `ln -sf $(TARGET_BOARD_PLATFORM)/$(notdir
+$@) $@` already produces the right relative link for a one-level subdir. The
+legacy-HIDL `audio.primary.mt6789` / `audio.r_submix.mt6789` / `sensors.mt6789`
+symlinks are **not** added — taiko is AIDL audio + sensors and those blobs
+aren't shipped. Re-sync: `git pull && breakfast taiko && brunch taiko` (only
+`Android.mk` changed). `verify-build.sh` gained a "GPU / graphics loader paths"
+section that checks each dlopen path resolves (and flags a dangling symlink).
 
 ### Round 50 - build-log review: first full `brunch taiko` ✅
 

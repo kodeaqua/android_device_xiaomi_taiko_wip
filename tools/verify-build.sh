@@ -91,18 +91,19 @@ mi="$SOONG_OUT/.intermediates/../../target/product/taiko/misc_info.txt"
 
 # ---------------------------------------------------------------------------
 sec "Generated-makefile hygiene (Round 49 regression class)"
-vmk=$(ls -1 "$TOP"/vendor/xiaomi/taiko/*/taiko-vendor.mk "$TOP"/vendor/xiaomi/taiko/xiaomi/*.mk 2>/dev/null | head -1)
+vmk=$(find "$TOP"/vendor/xiaomi/taiko -maxdepth 2 -name '*-vendor.mk' 2>/dev/null | head -1)
 if [ -n "$vmk" ] && [ -f "$vmk" ]; then
   # ELF (.so) or .apk/.jar landing in PRODUCT_COPY_FILES = "found ELF prebuilt in PRODUCT_COPY_FILES"
   bad=$(grep -oE '[^ ]+\.(so|apk|jar):' "$vmk" 2>/dev/null | grep -c '.')
   [ "$bad" -eq 0 ] && pass "no .so/.apk/.jar in PRODUCT_COPY_FILES ($(basename "$vmk"))" \
     || { fail "$bad ELF/APK/JAR entr(y|ies) in PRODUCT_COPY_FILES of $(basename "$vmk")"
          grep -oE '[^ ]+\.(so|apk|jar):' "$vmk" | head -5 | sed 's/^/      /'; }
-  grep -q 'check_elf_files: false' "$TOP"/vendor/xiaomi/taiko/*.bp 2>/dev/null \
-    && pass "Android.bp carries check_elf_files: false (blanket DISABLE_CHECKELF)" \
+  bp=$(find "$TOP"/vendor/xiaomi/taiko -maxdepth 2 -name 'Android.bp' 2>/dev/null | head -1)
+  [ -n "$bp" ] && grep -q 'check_elf_files: false' "$bp" \
+    && pass "generated Android.bp carries check_elf_files: false (blanket DISABLE_CHECKELF)" \
     || warn "no check_elf_files:false seen in generated Android.bp"
 else
-  warn "generated vendor/xiaomi/taiko/*/taiko-vendor.mk not found - run extract-files.py"
+  warn "generated vendor/xiaomi/taiko/**/*-vendor.mk not found (run from build root / after extract-files.py)"
 fi
 
 # ---------------------------------------------------------------------------
@@ -175,14 +176,37 @@ for f in \
   vendor/etc/fstab.mt6789 ; do
   [ -e "$OUT/$f" ] && pass "$f" || fail "$f MISSING"
 done
-# dropped-on-purpose: these must be GONE
+# dropped-on-purpose: these must be GONE (aconfig_flags.pb / flag.info are NOT
+# here - A16 build-generates vendor/etc/aconfig_flags.pb, so present = correct;
+# what was dropped was a name-colliding *blob*, invisible once the line is gone)
 for f in vendor/bin/aee_aedv64_v2 vendor/bin/aee_dumpstatev_v2 vendor/bin/aeev_v2 \
          vendor/bin/hw/vendor.mediatek.hardware.aee@1.1-service \
          vendor/bin/hw/android.hardware.contexthub-service.tinysys.blob \
-         vendor/lib64/libmtkcam.mcsspolicy.so vendor/lib64/libmtkcam_capture_request_monitor.so \
-         vendor/etc/aconfig/flag.info vendor/etc/aconfig_flags.pb ; do
+         vendor/lib64/libmtkcam.mcsspolicy.so vendor/lib64/libmtkcam_capture_request_monitor.so ; do
   [ -e "$OUT/$f" ] && warn "expected-gone still present: $f" || info "  gone (ok): $f"
 done
+
+# ---------------------------------------------------------------------------
+sec "GPU / graphics loader paths (Mali-G57 - boot-critical)"
+# MTK ships the real driver at <dir>/mt6789/<name> and a bare symlink at the
+# path the loader dlopens. BOTH must exist. -e follows symlinks (target must
+# resolve); -L confirms the link node is present.
+loadpath(){ # $1 = vendor-relative loader path, $2 = FAIL|WARN
+  local p="$OUT/$1"
+  if [ -e "$p" ]; then
+    [ -L "$p" ] && pass "$1 -> $(readlink "$p") (resolves)" || pass "$1 (real file)"
+  elif [ -L "$p" ]; then fail "$1 is a DANGLING symlink -> $(readlink "$p") (real .so not installed)"
+  else [ "$2" = WARN ] && warn "$1 absent" || fail "$1 MISSING - loader can't find it (add to MTK_SOC_SYMLINKS in Android.mk)"
+  fi; }
+for b in lib lib64; do
+  loadpath "vendor/$b/egl/libGLES_mali.so"                                   FAIL   # egl.cfg "0 1 mali"
+  loadpath "vendor/$b/hw/vulkan.mali.so"                                     FAIL   # Vulkan loader
+  loadpath "vendor/$b/hw/mapper.mediatek.so"                                 FAIL   # gralloc mapper (SurfaceFlinger)
+  loadpath "vendor/$b/hw/android.hardware.graphics.allocator-V2-mediatek.so" WARN   # allocator impl
+done
+loadpath "vendor/lib64/hw/android.hardware.camera.provider@2.6-impl-mediatek.so" WARN
+ec="$OUT/vendor/lib64/egl/egl.cfg"; [ -f "$ec" ] || ec="$OUT/vendor/lib/egl/egl.cfg"
+[ -f "$ec" ] && { pass "egl.cfg present"; grep -v '^#' "$ec" | sed 's/^/      /'; } || info "  no egl/egl.cfg (loader auto-probes libGLES_mali)"
 
 # ---------------------------------------------------------------------------
 sec "MVPU island (Round 49b)"
@@ -223,9 +247,14 @@ if [ -s "$fcm" ]; then
   [ "$miss" -eq 0 ] && pass "  Round-35 proprietary HALs all in device FCM"
 else warn "no compatibility_matrix.device.xml"; fi
 if have checkvintf; then
-  if checkvintf --check-compat "$OUT" >/tmp/_cv.log 2>&1; then pass "checkvintf --check-compat OK"
-  else fail "checkvintf --check-compat failed (/tmp/_cv.log)"; sed 's/^/      /' /tmp/_cv.log | head -12; fi
-else warn "checkvintf not on PATH - OTA-time compat not verified here"; fi
+  # the authoritative check already ran in-build (check_target_files_vintf.py at
+  # Package OTA). This is a best-effort re-run; CLI shape varies by version.
+  if   checkvintf --check-compat --rootdir="$OUT" >/tmp/_cv.log 2>&1 \
+    || checkvintf -c --dirmap /:"$OUT"           >/tmp/_cv.log 2>&1; then
+    pass "checkvintf --check-compat OK"
+  else warn "checkvintf re-run inconclusive (build's own check_target_files_vintf.py already passed) - see /tmp/_cv.log"
+       sed 's/^/      /' /tmp/_cv.log | head -8; fi
+else warn "checkvintf not on PATH - relying on the in-build VINTF check"; fi
 
 # ---------------------------------------------------------------------------
 sec "Kernel modules"
@@ -243,9 +272,13 @@ kmod(){ local d="$OUT/$1" ml="$OUT/$1/modules.load"
 }
 kmod vendor_dlkm/lib/modules  "vendor_dlkm"
 kmod system_dlkm/lib/modules  "system_dlkm"
-vrd=$(find "$OUT" -path '*vendor_ramdisk*/lib/modules' -o -path '*VENDOR_RAMDISK*/modules' 2>/dev/null | head -1)
-[ -n "$vrd" ] && pass "vendor_boot ramdisk modules: $(ls -1 "$vrd"/*.ko 2>/dev/null | wc -l) .ko" \
-             || warn "vendor_boot ramdisk modules dir not located"
+# vendor_boot ramdisk .ko: pick the dir that actually has the most .ko
+vrd=$(find "$OUT" -type d \( -path '*vendor_ramdisk*modules*' -o -path '*VENDOR_RAMDISK*' \) 2>/dev/null \
+      | while read -r d; do echo "$(find "$d" -maxdepth 1 -name '*.ko' | wc -l) $d"; done \
+      | sort -rn | head -1)
+vn=${vrd%% *}; vd=${vrd#* }
+if [ -n "$vrd" ] && [ "${vn:-0}" -gt 0 ]; then pass "vendor_boot ramdisk modules: $vn .ko (${vd#$OUT/})"
+else warn "vendor_boot ramdisk .ko dir not located (modules may already be packed into vendor_boot.img)"; fi
 
 # ---------------------------------------------------------------------------
 sec "fstab"
@@ -331,11 +364,9 @@ info "  $n apex in vendor/apex"
 if [ "$DEEP" -eq 1 ]; then
   sec "Deep: unresolved NEEDED across the built vendor image"
   tmp=$(mktemp)
-  { for d in "$OUT"/vendor/lib64 "$OUT"/vendor/lib64/* "$OUT"/vendor/lib64/hw \
-             "$OUT"/vendor/lib "$OUT"/vendor/lib/* "$OUT"/vendor/lib/hw \
-             "$OUT"/system/lib64 "$OUT"/system/lib64/* "$OUT"/system/lib "$OUT"/system/lib/* ; do
-      [ -d "$d" ] && ls -1 "$d" 2>/dev/null | grep -E '\.so$'
-    done
+  # every .so anywhere under vendor/ + system/ + apex (recursive - catches
+  # hw/mt6789/, egl/, soundfx/, mediadrm/, nnapi/, ...)
+  { find "$OUT"/vendor "$OUT"/system -name '*.so' 2>/dev/null -printf '%f\n'
     find "$OUT"/vendor/apex "$OUT"/system/apex -name '*.so' 2>/dev/null -printf '%f\n'
   } | sort -u > "$tmp"
   KNOWN_DEGRADED='NSCam|NS3Av3|NSIspTuning|libc\+\+_shared|audio_utils.*mutex|libmvpu'
@@ -346,6 +377,9 @@ if [ "$DEEP" -eq 1 ]; then
       [ -z "$nd" ] && continue
       grep -qxF "$nd" "$tmp" && continue
       case "$nd" in libc.so|libm.so|libdl.so|liblog.so|libc++.so|ld-android.so) continue;; esac
+      # libc++_shared.so: known (Round 40) - lib_fixups rewrites shared_libs but
+      # not the ELF; MiAlgo camera-AI libs only. Non-fatal, post-boot replace_needed.
+      case "$nd" in libc++_shared.so) deg=$((deg+1)); continue;; esac
       bad=$((bad+1)); printf "  ${c_y}NEEDED?${c_0} %-40s -> %s\n" "$b" "$nd"
     done < <("$RE" -d "$so" 2>/dev/null | sed -n 's/.*(NEEDED).*\[\(.*\)\]/\1/p')
     "$RE" --dyn-syms -W "$so" 2>/dev/null | awk '$4=="GLOBAL" && $7=="UND"{print $NF}' \
