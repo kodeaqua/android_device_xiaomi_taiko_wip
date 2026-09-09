@@ -109,22 +109,32 @@ and lists blobs with missing `NEEDED` libs — add `blob_fixups` and re-extract.
 
 **`brunch taiko` completes** → `lineage-23.2-20260909-UNOFFICIAL-taiko.zip` +
 `lineage_taiko-ota.zip` (1.48 GB payload, 2115 ops, test-key signed).
-**`verify-build.sh --deep` (post Round 51): `0 FAIL · 117 PASS · 16 WARN`** —
+**`verify-build.sh --deep` (post Round 53): `0 FAIL · 119 PASS · 11 WARN`** —
 GPU/graphics loader paths all resolve, every vendor `.so` `DT_NEEDED` resolves,
-partition sizes fit the scatter, AVB chain + VINTF + fstab + kernel modules all
-good. Round 53 cross-checked every WARN against a **booting** MT6789 LineageOS
-(yunluo 23.0): `libwpa_client` / CHRE / `sensors.dynamic_sensor_hal` +
+partition sizes fit the scatter, AVB chain + VINTF + fstab + kernel modules
+(incl. `vendor/lib/modules -> /vendor_dlkm/lib/modules`) + sepolicy fast-boot
+sha256 all good. Round 53 cross-checked every WARN against a **booting** MT6789
+LineageOS (yunluo 23.0): `libwpa_client` / CHRE / `sensors.dynamic_sensor_hal` +
 `libhidparser` / Widevine-apex / `gralloc.common` absences are all **normal**
 (yunluo is the same, or taiko's `hals.conf` never references it) - not
 first-boot risks. The one real thing it surfaced (`audio_effects.xml` pointing
-at a non-existent `libaudiopreprocessing_mtk.so`) is fixed. Pushed to
-`kodeaqua/android_device_xiaomi_taiko_wip` `lineage-23.2`. 53 fix rounds (soong
-bootstrap → kati → ninja compile → OTA package → verify → cross-check), all
-logged below.
+at a non-existent `libaudiopreprocessing_mtk.so`) is fixed. **All 11 remaining
+WARNs are confirmed non-issues - nothing actionable left in the tree.** Pushed
+to `kodeaqua/android_device_xiaomi_taiko_wip` `lineage-23.2`. 53 fix rounds
+(soong bootstrap → kati → ninja compile → OTA package → verify → cross-check),
+all logged below.
 
-**Next: flash to a device** (`verify-build.sh --flash` prints the recipe), then
-`adb shell dmesg | grep 'avc: denied'` + `adb logcat -b all` for the first-boot
-round (SELinux, camera, the WARN list above).
+**Not yet flashed** (device not in hand). **Next: flash**
+(`verify-build.sh --flash` prints the recipe: `fastboot flash vendor_boot` +
+vbmeta `--disable-verity` + boot chain both slots for a stock→Lineage first
+flash, `fastboot reboot recovery`, `adb sideload lineage-…-taiko.zip`, factory
+reset), then `adb shell dmesg | grep 'avc: denied'` + `adb logcat -b all` for
+the first-boot round (SELinux, camera, brightness curves, real AVB keys, trim
+`persist.miui.*`).
+
+Incremental rebuild after a `configs/`- or `Android.mk`-only change:
+`git -C device/xiaomi/taiko pull && brunch taiko` (~9 min, no
+`breakfast` / soong / kati regen).
 
 Build-log review (Round 50): **zero errors, zero `FAILED`, zero `check_elf`
 failures**. All remaining log noise is benign and expected —
