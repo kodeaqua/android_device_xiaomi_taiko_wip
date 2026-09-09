@@ -122,6 +122,20 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 47 — kati "overriding commands": `sensors.dynamic_sensor_hal`
+
+`overriding commands for target '.../vendor/lib/hw/sensors.dynamic_sensor_hal.so',
+previously defined at installs-lineage_taiko.mk`. The
+`android.hardware.sensors-service.multihal` source module we added in Round 18
+`required`s `sensors.dynamic_sensor_hal` (from
+`frameworks/native/services/sensorservice/dynamic_sensor`), which installs to
+that exact path. Dropped the two blob lines - taiko's stock
+`/vendor/etc/sensors/hals.conf` only lists
+`android.hardware.sensors@2.X-subhal-mediatek.so` + `sensors.camera.light.so`,
+so the dynamic-sensor sub-HAL is unused here anyway; source covers the install.
+
+Re-run: `./setup-makefiles.py`.
+
 ### Round 46 — kati "overriding commands": CHRE / contexthub source vs blobs
 
 Past ninja (`check_elf=False` was a warning, not an error - the build ran

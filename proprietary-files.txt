@@ -888,10 +888,8 @@ vendor/etc/vintf/manifest/android.hardware.security.secureclock-service.mitee.xm
 vendor/etc/vintf/manifest/android.hardware.security.sharedsecret-service.mitee.xml
 
 # Sensors
-vendor/lib/hw/sensors.dynamic_sensor_hal.so
 vendor/lib/libhidparser.so
 vendor/lib/sensors.camera.light.so
-vendor/lib64/hw/sensors.dynamic_sensor_hal.so
 vendor/lib64/hw/android.hardware.sensors@2.X-subhal-mediatek.so
 vendor/lib64/hw/sensors.mediatek.V2.0.so
 vendor/lib64/hw/sensors.mt6789.so
