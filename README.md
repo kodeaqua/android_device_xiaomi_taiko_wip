@@ -116,6 +116,20 @@ enabled; `configs/audio|media|wifi` = taiko's own; `BOARD_SUPER_PARTITION_SIZE`
 = 11 GiB from the scatter. See the workspace `../../../CLAUDE.md` "Build status"
 for the fix-class cheat sheet.
 
+## Verifying a build
+
+After `brunch taiko`, from the build root:
+
+```
+./device/xiaomi/taiko/tools/verify-build.sh          # artifacts, sizes, VINTF, modules, fstab, AVB, props, sepolicy
+./device/xiaomi/taiko/tools/verify-build.sh --deep    # + scan every built vendor .so for unresolved NEEDED (first-boot dlopen risk)
+```
+
+It also confirms the **Round 46-48 bet** - every blob dropped on the assumption a
+source module provides it is checked to actually exist in the built vendor image
+(a FAIL there = restore that `proprietary-files.txt` line). `avbtool` /
+`checkvintf` on `$PATH` enable the AVB-descriptor and check-compat sections.
+
 ## AOSP-core audit (source.android.com/docs/core)
 
 Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
