@@ -237,6 +237,77 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 57 - normal boot hangs forever at the bootloader logo: `metis.ko` NULL pointer oops
+
+**Fix applied, not yet reflashed/confirmed.** After Round 54/55 fixed
+`vendor_boot` and recovery, and a full `super.img` reflash fixed a separate
+A/B dynamic-partition mixup (see Round 54's status note), normal boot into
+taiko's own system image (not the GSI used to validate Round 54/55) hung
+indefinitely at the bootloader splash - no crash, no `console-ramoops`, no
+`pmsg-ramoops`, no `/data/vendor/aee_exp` or `expdb`/`oops` partition
+content, `fastbootd` also never enumerated over USB. Round 56 tried forcing
+`androidboot.selinux=permissive` as a diagnostic (in case a missing
+sepolicy rule on a required service was silently blocking boot) - inial
+test showed no change, but that test was invalid: `mka vendorbootimage`
+reported "ninja: no work to do" and never actually rebuilt the image (a
+pure `BoardConfig.mk` variable change didn't get picked up - the ninja-
+staleness class of bug the sibling `taiko-twrp` tree's README also warns
+about). Confirmed via `adb shell getprop ro.boot.selinux` / `cat /proc/
+bootconfig` after force-deleting `$OUT/vendor_boot.img` and rebuilding:
+permissive really was active, and the hang was identical - **SELinux ruled
+out**.
+
+**Root cause found** from `/sys/fs/pstore/console-ramoops-0`, captured only
+after the device was left long enough for MediaTek's own AP watchdog to
+force-reset it (`androidboot.bootreason=kernel_panic`,
+`aee_aed.poffreason=AP_WDT` in `/proc/bootconfig`) - every earlier attempt
+had been manually power-cycled before the watchdog could fire, which is why
+`pstore`/`expdb`/`oops` were empty every previous time. The captured log
+shows a kernel oops, not a clean panic, right as `logd` starts (i.e. right
+as normal second-stage init ramps up real process/thread activity):
+
+```
+init: starting service 'logd'...
+Unable to handle kernel NULL pointer dereference at virtual address 0000000000000000
+Internal error: Oops: 0000000096000005 [#1] PREEMPT SMP
+pc : [...] lowlt_list_del_task+0x70/0x170 [metis]
+```
+
+`metis.ko` (`modinfo`: "metis-driver by David", `depends: mi_schedule`,
+parameters like `mi_boost_duration`/`mi_freq_enable`/`mi_switch_enable` -
+a Xiaomi CPU-scheduling/game-boost assist driver, not core Android) is
+loaded **only** via `prebuilt/vendor_dlkm/modules.load` -
+`modules.load.vendor_ramdisk`/`modules.load.recovery` never reference it at
+all. That's exactly why recovery (a handful of processes: ueventd,
+servicemanager, recovery, adbd) almost never triggers the crash, while
+normal boot (dozens of services starting at once, right as `logd` ramps up
+scheduling activity) reliably does - and explains the user's separate
+"recovery kadang reboot tiba-tiba" report too: recovery does load
+`vendor_dlkm` modules under some paths, so the same crash can still fire
+there occasionally, just far less often than during full boot.
+
+Cross-checked against the sibling `xiaomi-mt6789-devs/android_device_
+xiaomi_yunluo-kernel` tree (same MT6789 platform, proven booting):
+its `modules.load` keeps `cpufreq_sugov_ext.ko`/`scheduler.ko`/
+`mtk_core_ctl.ko` (all `metis`-dependent per `modinfo -F depends`) but
+**does not load `metis.ko`, `mi_schedule.ko`, or `task_turbo.ko` at all** -
+independent confirmation this exact trio is the right thing to drop, not
+guesswork. Removed all three lines from `prebuilt/vendor_dlkm/modules.load`
+(nothing else touched - `BOARD_VENDOR_KERNEL_MODULES` wildcards every `.ko`
+in that directory regardless of `modules.load` content, so the three files
+stay in the tree/image, just never `insmod`'d). `cpufreq_sugov_ext`/
+`mtk_core_ctl`/`scheduler` (which `modinfo` lists as depending on `metis`)
+are kept, matching yunluo - if their own `insmod` now fails on an
+unresolved symbol, that's a non-fatal `insmod` error, not a kernel oops,
+and can be dropped individually later with fresh evidence if it turns out
+to matter.
+
+**Next**: `mka vendorbootimage`... **no** - `vendor_dlkm/modules.load`
+feeds `BOARD_VENDOR_KERNEL_MODULES_LOAD`, which packages into the
+**`vendor_dlkm` image**, not `vendor_boot`. Needs a `vendor_dlkm.img`
+rebuild (`mka vendor_dlkmimage` or a full `brunch taiko`) + reflash, then
+retest normal boot.
+
 ### Round 55 - recovery ADB never enumerates (nothing in Windows Device Manager either)
 
 **Fix confirmed on real hardware**: after rebuilding `vendor_boot.img` with

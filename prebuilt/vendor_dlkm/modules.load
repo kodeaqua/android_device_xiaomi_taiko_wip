@@ -136,7 +136,6 @@ arm_dsu_pmu.ko
 scheduler.ko
 cpufreq_sugov_ext.ko
 vip_engine.ko
-task_turbo.ko
 simtray.ko
 mi_rmap_efficiency.ko
 mtk_core_ctl.ko
@@ -163,8 +162,6 @@ mtk-swpm-dbg-v6789.ko
 clk-disable-unused.ko
 mtk-pm-domain-disable-unused.ko
 mi_thermal_message.ko
-mi_schedule.ko
-metis.ko
 perf_helper.ko
 binder_prio.ko
 scene_swappiness.ko
