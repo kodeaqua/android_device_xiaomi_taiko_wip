@@ -394,36 +394,41 @@ fi
 # ---------------------------------------------------------------------------
 if [ "$FLASH" -eq 1 ]; then
   sec "Flash recipe (unlocked bootloader)"
-  have_super=0; [ -s "$OUT/super.img" ] && have_super=1
   cat <<EOF
-  # --- 1. boot chain, both slots (from fastboot / bootloader mode) ---
-  fastboot flash boot_a        "$OUT/boot.img"
-  fastboot flash boot_b        "$OUT/boot.img"
-  fastboot flash vendor_boot_a "$OUT/vendor_boot.img"
-  fastboot flash vendor_boot_b "$OUT/vendor_boot.img"
-  fastboot flash dtbo_a        "$OUT/dtbo.img"
-  fastboot flash dtbo_b        "$OUT/dtbo.img"
+  # ===== MINIMAL (normal LineageOS flow) ================================
+  # The OTA zip's payload.bin contains EVERY partition (boot, vendor_boot,
+  # dtbo, vbmeta*, all super logicals, MTK firmware) - update_engine writes
+  # the inactive slot and switches. Only the recovery bootstrap is manual,
+  # and taiko's recovery rides in vendor_boot (no recovery partition):
+  fastboot flash vendor_boot "$OUT/vendor_boot.img"
+  fastboot reboot recovery
+  #   recovery UI: Apply Update -> Apply from ADB
+  adb sideload "$z"
+  #   then: Factory reset -> Format data, Reboot system
+
+  # ===== FIRST FLASH FROM STOCK HYPEROS (recommended hardening) =========
+  # stock vbmeta has verity/verification ON; force it off up front so the
+  # payload's vbmeta can't leave you in a dm-verity bootloop, and put the
+  # boot chain on BOTH slots so a one-off boot failure doesn't fall back
+  # to HyperOS:
   fastboot flash vbmeta_a         "$OUT/vbmeta.img"        --disable-verity --disable-verification
   fastboot flash vbmeta_b         "$OUT/vbmeta.img"        --disable-verity --disable-verification
   fastboot flash vbmeta_system_a  "$OUT/vbmeta_system.img" --disable-verity --disable-verification
   fastboot flash vbmeta_vendor_a  "$OUT/vbmeta_vendor.img" --disable-verity --disable-verification
+  fastboot flash boot_a        "$OUT/boot.img"        ; fastboot flash boot_b        "$OUT/boot.img"
+  fastboot flash vendor_boot_a "$OUT/vendor_boot.img" ; fastboot flash vendor_boot_b "$OUT/vendor_boot.img"
+  fastboot flash dtbo_a        "$OUT/dtbo.img"        ; fastboot flash dtbo_b        "$OUT/dtbo.img"
+  #   ... then the reboot recovery + adb sideload from MINIMAL above.
+
+  # ===== FASTBOOT-ONLY (needs super.img: 'mka superimage') =============
 EOF
-  if [ "$have_super" -eq 1 ]; then cat <<EOF
-  # --- 2. super, then wipe + boot ---
+  if [ -s "$OUT/super.img" ]; then cat <<EOF
   fastboot reboot fastboot
-  fastboot flash super         "$OUT/super.img"
+  fastboot flash super "$OUT/super.img"
   fastboot -w reboot
 EOF
-  else cat <<EOF
-  # --- 2. no super.img built - install the payload via LineageOS recovery ---
-  #     (recovery rides in vendor_boot; there is no recovery partition)
-  fastboot reboot recovery
-  #  in recovery: Apply Update -> Apply from ADB
-  adb sideload "$z"
-  #  then: Factory reset -> Format data/factory reset, Reboot system
-  #  (or build a flashable super: 'mka superimage' -> $OUT/super.img, use branch above)
-EOF
-  fi
+  else echo "  #   super.img not built - run 'mka superimage' first, then: fastboot flash super"; fi
+  echo
   echo "  # first boot: adb wait-for-device && adb shell dmesg | grep -i 'avc: denied' ; adb logcat -b all"
 fi
 
