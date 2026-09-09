@@ -125,6 +125,19 @@ BOARD_INCLUDE_RECOVERY_RAMDISK_IN_VENDOR_BOOT := true
 
 BOARD_KERNEL_CMDLINE := bootopt=64S3,32N2,64N2
 
+# TEMPORARY DIAGNOSTIC (Round 56, first-boot bring-up) - DO NOT SHIP.
+# System boot hangs at the bootloader splash indefinitely (no bootanimation,
+# no adb, and no pstore panic/pmsg capture at all - so the hang is silent,
+# not a crash). sepolicy/vendor/ is still the yunluo starting point, never
+# verified against a first boot (see CLAUDE.md). Forcing permissive here
+# isolates whether a missing sepolicy allow rule on a required service
+# (vold/servicemanager/surfaceflinger/...) is what's blocking boot, since an
+# enforcing denial on a critical service gives exactly this symptom - no
+# log, because the process just gets killed/blocked, not panicked.
+# Revert this line the moment the real cause is found; permissive must never
+# ship.
+BOARD_KERNEL_CMDLINE += androidboot.selinux=permissive
+
 # Stock vendor_boot bootconfig payload (verbatim from the dumped vendor_boot.img)
 BOARD_BOOTCONFIG += kernel.rcu_nocbs=all
 BOARD_BOOTCONFIG += kernel.rcutree.enable_rcu_lazy=1
