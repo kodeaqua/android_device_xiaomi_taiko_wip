@@ -1370,7 +1370,7 @@ vendor/lib/mt6789/libpq_cust_base.so
 vendor/lib/mt6789/libpqconfig.so
 vendor/lib/mt6789/libscltm.so
 vendor/lib/mt6789/libvcodec_utility_v3a.so
-vendor/lib/mt6789/libmtk_drvb.so
+vendor/lib/mt6789/libmtk_drvb.so;DISABLE_CHECKELF
 vendor/lib/mt6789/libdpframework.so
 vendor/lib/mt6789/libaiselector.so;DISABLE_CHECKELF
 vendor/lib64/mt6789/libaiselector.so;DISABLE_CHECKELF

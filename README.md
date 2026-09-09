@@ -122,6 +122,28 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 45 — `check_elf=False` module-wide (end the check_elf tail)
+
+`libneuron_adapter_mgvi` (NeuroPilot/APU adapter): undefined
+`AHardwareBuffer_{describe,lock,unlock}@LIBNATIVEWINDOW` (versioned, arm64) +
+`DT_NEEDED libnativewindow/libz/liblog not in shared_libs` + an unparseable
+`DT_STRTAB` on the arm build. Same benign class as Rounds 38-44, now in the
+NeuroPilot / APU / `libapusys` / `libneuron_runtime` / `libvpu` cluster - and
+that cluster is as mutually-tangled as the camera one.
+
+Rounds 36-44 disabled ~265 lines one/few at a time; the tail is clearly
+open-ended (every large MTK vendor sub-cluster does this). Flipped
+`ExtractUtilsModule(check_elf=False)` in `extract-files.py` - `check_elf_file` is
+off for the whole `vendor/xiaomi/taiko` module now, the choice most MTK
+LineageOS trees make for a blob set this size. The ~265 `;DISABLE_CHECKELF`
+suffixes are left in place as no-op markers of the known-quirky blobs.
+`blob_fixups` (the real AIDL-version-skew `replace_needed` patches) run at
+extract time and are unaffected. A genuinely missing `DT_NEEDED` now surfaces as
+a runtime `dlopen` failure in logcat instead of a build error - acceptable
+trade for a bring-up.
+
+Re-generate with `./setup-makefiles.py` (module-config change, no re-extract).
+
 ### Round 44 — blanket `DISABLE_CHECKELF` the camera blob cluster
 
 Rounds 36-43 whittled `check_elf_file` failures one/few at a time; Round 44 was
