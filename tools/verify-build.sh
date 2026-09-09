@@ -107,29 +107,54 @@ fi
 
 # ---------------------------------------------------------------------------
 sec "Round 21/28/46-48 drops: source must provide the file"
-have32=0; [ "$(find "$OUT/vendor/lib" -maxdepth 2 -name '*.so' 2>/dev/null | head -30 | wc -l)" -ge 25 ] && have32=1
 src(){ [ -e "$OUT/$1" ] && pass "src: $1" \
-       || { [ "${2:-}" = soft ] && warn "absent (32-bit, likely fine): $1" || fail "MISSING $1  -> restore that proprietary-files.txt line"; }; }
-for m in libaecsw libagc1sw libagc2sw libbassboostsw libbundleaidl libdownmixaidl \
-         libdynamicsprocessingaidl libenvreverbsw libequalizersw libextensioneffect \
-         libloudnessenhanceraidl libnssw libpreprocessingaidl libpresetreverbsw \
-         libreverbaidl libvirtualizersw libvisualizeraidl libvolumesw; do
-  src "vendor/lib64/soundfx/$m.so"
-  [ "$have32" -eq 1 ] && src "vendor/lib/soundfx/$m.so" soft
+       || { [ "${2:-}" = soft ] && warn "absent (likely fine): $1" || fail "MISSING $1  -> restore that proprietary-files.txt line"; }; }
+soft(){ [ -e "$OUT/$1" ] && pass "present: $1" || warn "absent - $2"; }
+
+# Audio effects: the correctness test is "does every lib the shipped
+# audio_effects.xml references resolve" - NOT "is each dropped HyperOS blob
+# name back". Round 48 dropped libbundleaidl/libvolumesw/libequalizersw/... =
+# HyperOS-only alt impls; taiko's own config calls the AOSP wrapper libs
+# (libbundlewrapper, libreverbwrapper, ...) + the *_mtk / *aidl blobs, all of
+# which ARE shipped. Parse the config and check each path= entry.
+aecfg="$DT/configs/audio/audio_effects.xml"
+if [ -f "$aecfg" ]; then
+  miss=0; nlib=0
+  while IFS= read -r lib; do
+    nlib=$((nlib+1))
+    case "$lib" in lib_some_fx_*) continue;; esac      # AOSP template placeholders
+    if find "$OUT/vendor/lib64/soundfx" "$OUT/vendor/lib/soundfx" \
+            "$OUT/system/lib64/soundfx" -name "$lib" 2>/dev/null | grep -q .; then :
+    else miss=$((miss+1)); warn "  audio_effects.xml lib not in image: $lib"; fi
+  done < <(grep -oE 'path="[^"]+\.so"' "$aecfg" | sed 's/path="//;s/"//' | sort -u)
+  [ "$miss" -eq 0 ] && pass "audio_effects.xml: all $nlib referenced libs resolve in soundfx/" \
+                    || warn "audio_effects.xml: $miss referenced lib(s) missing - effect(s) unavailable, non-fatal (check logcat 'EffectFactory')"
+else warn "configs/audio/audio_effects.xml not found - effect coverage not checked"; fi
+# effect libs that MUST be present (config backbone: AOSP wrappers + kept blobs)
+for f in libbundlewrapper libreverbwrapper libvisualizer libdownmix libldnhncr \
+         libdynproc libaudiopreprocessing libspatializer libeffectproxy \
+         libmisoundfx_aidl libdlbvolaidl libswdapaidl libswspatializeraidl \
+         libaecsw_mtk libnssw_mtk libpreprocessingaidl_mtk ; do
+  [ -e "$OUT/vendor/lib64/soundfx/$f.so" ] && pass "soundfx/$f.so" \
+    || fail "soundfx/$f.so MISSING  -> audio_effects.xml references it"
 done
+
 src "vendor/lib64/mediadrm/libdrmclearkeyplugin.so"
 src "vendor/lib64/mediacas/libclearkeycasplugin.so"
-src "vendor/lib64/libwpa_client.so"
-src "vendor/lib64/libhidparser.so"
-src "vendor/bin/hw/android.hardware.contexthub-service.tinysys"   # R46
-src "vendor/lib64/chre_atoms_log.so"; src "vendor/lib64/chremetrics-cpp.so"
-src "vendor/lib64/hw/sensors.dynamic_sensor_hal.so"               # R47
+src "vendor/lib64/android.hardware.audio.core-impl-mediatek.so"   # R37: kept, NOT under hw/
 src "vendor/bin/hw/android.hardware.health-service.example"       # R21
 src "vendor/bin/hw/android.hardware.sensors-service.multihal"     # R18
 src "vendor/bin/hw/wpa_supplicant"; src "vendor/bin/hw/hostapd"   # R27/48
-src "vendor/etc/vintf/manifest/android.hardware.audio.effect.service-aidl.xml" soft  # source frag OR our manifest_audio_aidl.xml
 src "vendor/etc/bpf/filterPowerSupplyEvents.o"                    # R21
+src "vendor/etc/vintf/manifest/android.hardware.audio.effect.service-aidl.xml" soft
 src "vendor/bin/mkshrc" soft ; src "vendor/etc/mkshrc" soft       # R24
+# Dropped for a rule collision; source module not pulled into the image.
+# All non-fatal on a Wi-Fi-only tablet - verify the feature at first boot,
+# restore the blob line only if it is actually broken.
+soft "vendor/lib64/libwpa_client.so"                 "legacy; unused by AIDL Wi-Fi on A16"
+soft "vendor/lib64/libhidparser.so"                  "BT-HID descriptor parsing; low risk"
+soft "vendor/bin/hw/android.hardware.contexthub-service.tinysys" "CHRE/context-hub (R46); nano-apps + sensor batching only"
+soft "vendor/lib64/hw/sensors.dynamic_sensor_hal.so" "external/dynamic sensors (R47)"
 
 # ---------------------------------------------------------------------------
 sec "Kept MTK / Xiaomi blobs"
@@ -171,14 +196,18 @@ n=$(find "$OUT/vendor/lib64" -name 'libmvpu*.so' 2>/dev/null | wc -l)
 # ---------------------------------------------------------------------------
 sec "VINTF"
 vm="$OUT/vendor/etc/vintf/manifest.xml"
+frags="$OUT/vendor/etc/vintf/manifest"     # merged into the runtime manifest at boot
+hal_declared(){ grep -rqs "<name>$1</name>" "$vm" "$frags" 2>/dev/null; }
 if [ -s "$vm" ]; then
-  pass "device manifest present ($(wc -l <"$vm") lines)"
+  nf=$(ls -1 "$frags"/*.xml 2>/dev/null | wc -l)
+  pass "device manifest ($(wc -l <"$vm") lines) + $nf vintf fragments"
+  # these may live in manifest.xml OR a fragment - both merge at runtime
   for n in android.hardware.audio.core android.hardware.audio.effect \
            android.hardware.camera.provider vendor.mediatek.hardware.mtkpower \
            android.hardware.graphics.allocator android.hardware.graphics.composer3 \
            android.hardware.security.keymint android.hardware.gatekeeper \
            android.hardware.health android.hardware.sensors android.hardware.usb; do
-    grep -q "<name>$n</name>" "$vm" && pass "  HAL: $n" || warn "  HAL not declared: $n"
+    hal_declared "$n" && pass "  HAL: $n" || warn "  HAL not in manifest or any fragment: $n"
   done
   grep -q '<sepolicy>' "$vm" && grep -q '202504' "$vm" && pass "  sepolicy 202504" || warn "  sepolicy tag != 202504"
 else fail "device manifest.xml missing"; fi

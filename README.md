@@ -105,16 +105,57 @@ and lists blobs with missing `NEEDED` libs — add `blob_fixups` and re-extract.
 `./setup-makefiles.py` regenerates `Android.bp` from `proprietary-files.txt`
 *without* re-copying blobs (use it after line removals).
 
-## Status (2026-09-09)
+## Status (2026-09-09) — FIRST FULL BUILD ✅
 
-Pushed to `kodeaqua/android_device_xiaomi_taiko_wip` `lineage-23.2`. Passed
-soong bootstrap + kati + ninja (36 fix rounds, logged
-below); at ~82% ninja (a check_elf_file on stale AEE dumper blobs, Round 36); Round 35 cleared OTA-time `checkvintf`
-(`Package OTA` / `ota_from_target_files` → `check_target_files_vintf.py`).
+**`brunch taiko` completes.** `build completed successfully (19:09)` →
+`out/target/product/taiko/lineage-23.2-20260909-UNOFFICIAL-taiko.zip` +
+`lineage_taiko-ota.zip` (1.48 GB payload, 2115 ops, signed with test keys).
+Pushed to `kodeaqua/android_device_xiaomi_taiko_wip` `lineage-23.2`. 49 fix
+rounds (soong bootstrap → kati → ninja compile → OTA package), all logged below.
+
+Build-log review (Round 50): **zero errors, zero `FAILED`, zero `check_elf`
+failures**. All remaining log noise is benign and expected —
+`ramdisk size: 0` / `cpio: empty archive` (GKI kernel-only boot.img by design),
+`Failed to read IMAGES/init_boot.img` (no init_boot on taiko),
+`Couldn't find AIDL metadata for vendor.mediatek.hardware.*` ("expected for
+prebuilt interfaces"), `Duplicate key 'BoardPlatform'/'ProductModel' with
+identical values`, `setProcessGroupSwappiness is deprecated` (AOSP source),
+`Disabling zucchini/lz4diff` (full OTA). `super_partition_size` 11811160064 /
+group 11806965760 match the scatter exactly; `lpmake` built super_empty A+B.
+One cosmetic upstream quirk: `misc_info` `ab_partitions` carries a trailing
+empty `''` entry after the firmware partitions — harmless (payload generated &
+signed fine), not from our editable files.
+
+`tools/verify-build.sh` run against the built tree: **0 real FAILs.** The 24 it
+first flagged were script bugs (fixed) + non-blocking absences:
+- `android.hardware.audio.core-impl-mediatek.so` — present at `vendor/lib64/`
+  (script wrongly looked under `hw/`). Audio HAL intact.
+- 19× `soundfx/*` — false. `configs/audio/audio_effects.xml` references the AOSP
+  wrapper libs (`libbundlewrapper`, `libreverbwrapper`, `libvisualizer`,
+  `libdownmix`, `libldnhncr`, `libdynproc`, `libaudiopreprocessing`,
+  `libspatializer`, `libeffectproxy` — all built from source) + the `*_mtk` /
+  `*aidl` blobs (all kept). The names Round 48 dropped (`libbundleaidl`,
+  `libvolumesw`, `libequalizersw`, …) are HyperOS-only alt impls the config
+  never loads. Correct drop.
+- Genuinely absent, non-blocking, verify at first boot / restore only if broken:
+  `libwpa_client.so` (legacy, unused by AIDL Wi-Fi on A16), `libhidparser.so`
+  (BT-HID parsing), `android.hardware.contexthub-service.tinysys` +
+  `chre_atoms_log.so` (CHRE, R46), `sensors.dynamic_sensor_hal.so` (R47).
+- VINTF "HAL not in manifest" WARNs — those HALs are declared in
+  `vendor/etc/vintf/manifest/*.xml` fragments, merged at boot; script now scans
+  the fragment dir too.
+- `--deep`: `libmtkcam_hal_aidl_provider.so` → `camera.provider@2.6-impl
+  -mediatek.so`, `vulkan.mali.so` → `libGLES_mali.so` — confirm both impl libs
+  are in the image before trusting camera/GPU (camera already a first-boot item).
+
 Build runs on a separate machine — errors are pasted in and fixed here. Camera
 enabled; `configs/audio|media|wifi` = taiko's own; `BOARD_SUPER_PARTITION_SIZE`
 = 11 GiB from the scatter. See the workspace `../../../CLAUDE.md` "Build status"
 for the fix-class cheat sheet.
+
+**Next: flash to a device.** Everything past this point (SELinux denials,
+camera correctness, auto-brightness curves, real AVB keys, trimming
+`persist.miui.*`) needs a booting target — see "Open TODO".
 
 ## Verifying a build
 
@@ -146,6 +187,44 @@ fix, checkpoint, `system_dlkm` AVB chain) · recovery-in-vendor_boot · AVB
 Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
+
+### Round 50 - build-log review: first full `brunch taiko` ✅
+
+User pasted the packaging-pass log (`log.txt`, 6949 lines — the incremental
+965-target run after the heavy ninja compile). Result:
+`#### build completed successfully (19:09 (mm:ss)) ####`, both
+`lineage-23.2-20260909-UNOFFICIAL-taiko.zip` and `lineage_taiko-ota.zip`
+produced and test-key-signed.
+
+Swept for `error:` / `FAILED` / `check_elf` / size-overflow → **none**. Every
+`WARNING`/`INFO` in the log is expected:
+
+| Log line | Why it's fine |
+|---|---|
+| `boot magic … ramdisk size: 0` · `cpio: empty archive` · `decoded 0 bytes` | boot.img is the stock GKI kernel, no ramdisk — used as-is (matches Hard facts). The re-sign step just can't introspect a ramdisk that isn't there. |
+| `Failed to read IMAGES/init_boot.img` | taiko has no `init_boot` partition. |
+| `Failed to read SYSTEM/etc/build.prop` / `VENDOR/…` / `ODM/…` (during boot re-sign) | those partitions aren't inside boot.img; props are read later from the real images. |
+| `INFO: Couldn't find AIDL metadata for: vendor.mediatek.hardware.* … expected for prebuilt interfaces` | our proprietary HALs declared in `configs/vintf/manifest.xml` with no AIDL source in-tree. Working as intended. |
+| `Duplicate key 'BoardPlatform' / 'ProductModel' with identical values found` | set in two inherited makefiles to the *same* value — no effect. |
+| `setProcessGroupSwappiness is deprecated: Unsupported in memcg v2` | AOSP `system/core/init` source, not our tree. |
+| `Sysprop apex.all.ready is missing, default to ''` | benign default during `check_target_files_vintf`. |
+| `Disabling zucchini` / `Disabling lz4diff` | full (non-incremental) OTA — no source build to diff against. |
+
+`super_partition_size = 11811160064`, `mtk_dynamic_partitions_group_size =
+11806965760` — exact scatter match. `lpmake` built `super_empty.img` with
+A+B groups over the 7 dynamic partitions (`odm_dlkm product system system_dlkm
+system_ext vendor vendor_dlkm`; `mi_ext` intentionally not built — HyperOS
+-only). `boot`/`vendor_boot` re-signed AVB `SHA256_RSA2048` test key,
+`rollback_index 1785542400`, header v4; `vendor_boot` rebuilt with the
+`RECOVERY`/`recovery` ramdisk fragment.
+
+**Cosmetic, not fixed:** `misc_info` `ab_partitions` ends with an empty `''`
+after the 13 firmware partitions (`countrycode … tee`, from
+`proprietary-firmware.txt` `;AB`). `proprietary-firmware.txt` itself is clean
+(13 entries, no blank line); the empty element is an AOSP/extract-utils
+list-join artifact. `ota_from_target_files` skips falsy names — payload built
+(2115 ops) and signed with no complaint. Revisit only if a full-zip
+`fastboot update` rejects an empty partition name.
 
 ### Round 49 - ELF in PRODUCT_COPY_FILES: revert `check_elf=False`
 
@@ -1127,4 +1206,18 @@ Still open: see TODO.
       auto-brightness nits/backlight curves, Wi-Fi country.
 - [ ] Re-sign with real AVB keys once unlocked-and-booting (currently AOSP test
       keys everywhere).
+- [ ] First-boot `logcat`/`dmesg` triage of the Round-50 verify absences
+      (all non-fatal — restore the blob line only if the feature is broken):
+      - `EffectFactory` load errors → `audio_effects.xml` line 24 wants
+        `libaudiopreprocessing_mtk.so`, image has `libaudiopreprocessing.so`.
+      - Wi-Fi assoc fails → check for a `libwpa_client.so` `dlopen` error.
+      - `contexthub`/CHRE service not starting → `contexthub-service.tinysys`
+        (dropped R46) + `chre_atoms_log.so` not rebuilt from source.
+      - External/dynamic sensors absent → `sensors.dynamic_sensor_hal.so` (R47).
+      - BT keyboard/mouse HID broken → `libhidparser.so`.
+      - `camerahalserver` crash → confirm
+        `android.hardware.camera.provider@2.6-impl-mediatek.so` is in the image
+        (`libmtkcam_hal_aidl_provider.so` hard-NEEDs it).
+      - No GPU / black screen → confirm `vendor/lib64/egl/libGLES_mali.so`
+        present (`vulkan.mali.so` NEEDs it).
 ```
