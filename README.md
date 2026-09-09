@@ -144,11 +144,17 @@ LineageOS recovery** - first successful boot of any kind on this tree, and
 proof the PLATFORM-fragment fix (Round 54) is correct. RECOVERY-fragment
 budget (LineageOS recovery + stock's 26.4MiB PLATFORM fragment inside the
 fixed 64MB `vendor_boot` partition) fits fine, no trimming was needed.
-**Next**: `adb sideload lineage-…-taiko.zip` from recovery, factory reset
-(Format data), reboot to system - first real test of normal boot - then
-`adb shell dmesg | grep 'avc: denied'` + `adb logcat -b all` for the
-first-boot round (SELinux, camera, brightness curves, real AVB keys, trim
-`persist.miui.*`).
+
+**Normal system boot also confirmed** - reached System (tested with a
+LineageOS GSI on `system`, `taiko`'s own `lineage_taiko-ota.zip` not sideloaded
+yet). Validates the whole boot chain end to end (kernel, the Round-54
+`vendor_boot`, `vbmeta`, dynamic partitions/super) and VINTF/vendor-interface
+compatibility, independent of taiko's own system image. **Next**: `adb
+sideload lineage_taiko-ota.zip` from recovery (this tree's own build, not the
+GSI) + factory reset (Format data, since `system` currently holds the GSI),
+reboot to system - first real test of taiko's own ROM - then `adb shell
+dmesg | grep 'avc: denied'` + `adb logcat -b all` for the first-boot round
+(SELinux, camera, brightness curves, real AVB keys, trim `persist.miui.*`).
 
 Incremental rebuild after a `configs/`- or `Android.mk`-only change:
 `git -C device/xiaomi/taiko pull && brunch taiko` (~9 min, no
