@@ -1,0 +1,43 @@
+# SPDX-FileCopyrightText: 2026 The LineageOS Project
+# SPDX-License-Identifier: Apache-2.0
+#
+# Round 55: recovery ADB never enumerates on the host (nothing shows up even
+# in Windows Device Manager) - USB gadget never comes up at all in recovery.
+#
+# Root cause: bootable/recovery/etc/init.rc (the AOSP default, unmodified by
+# this tree until now) unconditionally does `setprop sys.usb.configfs 0` at
+# `on early-init`, which routes USB gadget setup through the LEGACY
+# /sys/class/android_usb/android0/* sysfs interface. This SoC/kernel (MT6789,
+# GKI android16-6.12) does not implement that legacy class at all - it is
+# configfs-gadget only, exactly like this device's own normal-boot
+# rootdir/etc/init.mt6789.usb.rc (`/config/usb_gadget/g1/...`) already proves.
+# Every `write /sys/class/android_usb/android0/...` in recovery's init.rc
+# silently fails (no such path), so the gadget is never bound to a UDC and
+# nothing enumerates on the host - not a driver problem, not a cable problem.
+#
+# This file is auto-merged into the recovery ramdisk root by
+# build/make/core/Makefile (TARGET_DEVICE_DIR)/recovery/root, and
+# bootable/recovery/etc/init.rc's very first line is
+# `import /init.recovery.${ro.hardware}.rc` (ro.hardware = mt6789, derived
+# from TARGET_BOARD_PLATFORM) - so this is picked up with no BoardConfig.mk/
+# device.mk wiring needed.
+#
+# Must override at `on init`, not `on early-init`: import happens before
+# init.rc's own body is parsed, so an `on early-init` block here would be
+# registered (and would run) BEFORE init.rc's own `on early-init` block that
+# sets configfs back to 0 - same trigger, same firing, ours would just get
+# clobbered immediately after. `on init` is a distinct, later-firing trigger,
+# so it reliably wins regardless of parse/import order.
+#
+# sys.usb.controller must also be set here: init.rc's configfs path
+# ultimately does `write /config/usb_gadget/g1/UDC ${sys.usb.controller}` to
+# bind the gadget - and nothing else in the recovery ramdisk ever sets that
+# property (it's normally set by this device's own rootdir/etc/
+# init.mt6789.usb.rc, which only runs on a full system boot, never in
+# recovery). Value matches that file's own `on boot` block exactly
+# (musb-hdrc, MTK's MUSB controller driver - phy-mtk-tphy.ko/musb_hdrc.ko/
+# musb_main.ko are already loaded in both vendor_boot ramdisk fragments).
+
+on init
+    setprop sys.usb.configfs 1
+    setprop sys.usb.controller "musb-hdrc"

@@ -237,6 +237,88 @@ Checked against: generic-boot, vendor-boot-partitions, gki-partitions,
 dynamic-partitions, loadable-kernel-modules, vndk build-system, VINTF objects,
 SELinux device policy.
 
+### Round 55 - recovery ADB never enumerates (nothing in Windows Device Manager either)
+
+**Not yet rebuilt/reflashed.** After Round 54 got recovery + normal boot both
+working, `adb devices` from recovery's "Apply from ADB" screen came back
+completely empty - and not just `adb`: nothing new appeared in Windows
+Device Manager at all when plugging in (same cable/port that worked fine for
+`fastboot` the whole time), ruling out a missing-driver explanation - the
+gadget itself never enumerates on the bus.
+
+Root cause, found by reading `bootable/recovery/etc/init.rc` (AOSP default,
+unmodified by this tree until now) directly: it does
+
+```
+on early-init
+    ...
+    setprop sys.usb.configfs 0
+```
+
+unconditionally, which routes all USB gadget setup through the **legacy**
+`/sys/class/android_usb/android0/*` sysfs interface (see the file's
+`on fs && property:sys.usb.configfs=0` block). This device's kernel (MT6789,
+GKI android16-6.12) does not implement that legacy class at all - it is
+configfs-gadget only, exactly like this device's own normal-boot
+`rootdir/etc/init.mt6789.usb.rc` already proves (`/config/usb_gadget/g1/...`,
+present and working per the Round-54 GSI normal-boot test). Every
+`write /sys/class/android_usb/android0/...` in recovery's init.rc silently
+fails (no such path - `init` logs an error, non-fatal, and moves on), so the
+gadget is never bound to any UDC and nothing shows up on the host at all -
+not a Windows driver problem, not a cable problem.
+
+`bootable/recovery/etc/init.rc`'s very first line is
+`import /init.recovery.${ro.hardware}.rc` (`ro.hardware` = `mt6789`, the
+AOSP default derived from `TARGET_BOARD_PLATFORM`) - the standard device
+override hook for exactly this. This tree had no such file at all yet (no
+`recovery/root/` directory existed), so the import silently resolved to
+nothing and recovery ran with 100% AOSP defaults for USB.
+
+**Fix**: added `recovery/root/init.recovery.mt6789.rc` -
+`$(TARGET_DEVICE_DIR)/recovery/root` is auto-discovered and merged into the
+recovery ramdisk root by `build/make/core/Makefile`, no `BoardConfig.mk`/
+`device.mk` wiring needed (same auto-discovery mechanism the sibling
+`taiko-twrp` tree's `recovery/root/` relies on, confirmed by reading
+`build/make/core/Makefile`'s `recovery_root_private` handling directly). The
+override:
+
+```
+on init
+    setprop sys.usb.configfs 1
+    setprop sys.usb.controller "musb-hdrc"
+```
+
+Two things, both required:
+- `sys.usb.configfs 1` routes recovery through the `on fs &&
+  property:sys.usb.configfs=1` block instead (mounts `configfs`, creates
+  `/config/usb_gadget/g1` with `ffs.adb`/`ffs.fastboot` functions - the same
+  class of setup `init.mt6789.usb.rc` already does for normal boot, just
+  simpler since recovery only needs adb+fastboot, not the full MTP/RNDIS/ACM
+  stack). Must be set at `on init`, **not** `on early-init`: `import`
+  inserts the imported file's actions into the global action list before
+  `init.rc`'s own subsequent lines are parsed, so an `on early-init` block
+  here would fire (and lose) *before* `init.rc`'s own `on early-init` block
+  sets it back to 0 - same trigger, same firing pass. `on init` is a
+  distinct, later trigger, so it reliably wins regardless of import/parse
+  order.
+- `sys.usb.controller "musb-hdrc"` - the configfs path's final gadget-bind
+  step does `write /config/usb_gadget/g1/UDC ${sys.usb.controller}`, and
+  nothing else in the recovery ramdisk ever sets that property (it's
+  normally set by `rootdir/etc/init.mt6789.usb.rc`'s own `on boot` block,
+  which only runs on a full system boot, never in recovery) - without it
+  the UDC write is empty and the gadget still never binds even with configfs
+  enabled. Value copied verbatim from that same file (MTK's MUSB controller
+  driver; `phy-mtk-tphy.ko`/`musb_hdrc.ko`/`musb_main.ko` are already loaded
+  in both vendor_boot ramdisk fragments per `modules.load.recovery`).
+
+`sys.usb.ffs.ready` (the third condition on the property-triggered UDC-bind
+block) needed no fix - confirmed from `bootable/recovery/install/
+adb_install.cpp` that it's set by the adb daemon itself once it opens the
+functionfs endpoint, independent of configfs vs legacy.
+
+**Next**: rebuild `vendor_boot.img` only (recovery-side change) and reflash
+both slots, then retry `adb devices` from "Apply from ADB".
+
 ### Round 54 - first real-hardware flash: no boot, no recovery ("logo then power off")
 
 **Fix confirmed on real hardware**: after rebuilding `vendor_boot.img` with
