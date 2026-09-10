@@ -1,0 +1,44 @@
+# SPDX-FileCopyrightText: 2026 The LineageOS Project
+# SPDX-License-Identifier: Apache-2.0
+#
+# Round 58: metis.ko (a Xiaomi CPU-scheduling/game-boost driver) crashes with
+# a NULL pointer dereference in lowlt_list_del_task the moment real
+# second-stage boot ramps up scheduling activity (right as logd starts) -
+# confirmed via a captured kernel oops in /sys/fs/pstore/console-ramoops-0
+# (Round 57's writeup in README has the full trace).
+#
+# Round 57 tried removing metis.ko/mi_schedule.ko/task_turbo.ko from
+# modules.load directly - confirmed NOT to work: this device's
+# init.insmod.mt6789.cfg drives loading via `modprobe -a` (not raw
+# sequential insmod), and modprobe auto-loads a module's hard dependencies
+# from modules.dep regardless of whether that dependency's own line is
+# present in modules.load. scheduler.ko/cpufreq_sugov_ext.ko/mtk_core_ctl.ko
+# (kept, matching the sibling yunluo tree) all hard-depend on metis per
+# modules.dep, so metis kept getting pulled back in as a dependency even
+# with its own line removed - confirmed by two byte-identical
+# console-ramoops captures showing the exact same crash after the "fix".
+#
+# The actual, working mechanism: system/core/libmodprobe's blocklist_ (see
+# Modprobe::IsBlocklisted) is consulted *during* dependency resolution too
+# ("Hard-dependencies cannot be blocklisted" -> the *dependent's* load
+# fails cleanly instead of silently pulling the blocklisted module back in).
+# modules.load has been restored to its stock content (metis.ko/
+# mi_schedule.ko/task_turbo.ko all present again, matching yunluo... no,
+# matching this device's own stock list) - blocking happens here instead,
+# which is the properly-supported, reversible mechanism for this exact
+# case. rootdir/bin/init.insmod.sh already handles the "-b" prefix
+# (`"-b *" | "-b") arg="-b $(cat modules.load)"`), and
+# vendor/etc/init.insmod.mt6789.cfg has a blob_fixup (extract-files.py)
+# changing `modprobe|*` to `modprobe|-b *` to actually pass it.
+#
+# Blast radius (unavoidable - these all hard-depend on metis/mi_schedule
+# per modules.dep, and "hard-dependencies cannot be blocklisted" fails
+# their own load too, not just skips metis): scheduler, cpufreq_sugov_ext,
+# mtk_core_ctl, task_turbo, vip_engine, mtk_fpsgo_v3, fpsgo,
+# powerhal_cpu_ctrl, ccidvfs, mtk_perf_common, perf_common_v, and
+# mtk-vcodec-sys-api (video codec HW accel - falls back to SW decode).
+# Deleting the metis/mi_schedule files outright would have the identical
+# blast radius; blocklist is kept instead because it's reversible without
+# a re-extract if a newer HyperOS dump ever ships a fixed metis.ko.
+blocklist metis
+blocklist mi_schedule

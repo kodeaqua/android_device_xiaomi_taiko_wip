@@ -75,6 +75,17 @@ blob_fixups: blob_fixups_user_type = {
         "    class main\n    group root system\n    oneshot\n    seclabel u:r:vendor_touch_init_shell:s0",
         "    class main\n    user root\n    group root system\n    oneshot\n    seclabel u:r:vendor_touch_init_shell:s0",
     ),
+    # Round 58: pass -b (blocklist-aware) to the modprobe -a vendor_dlkm
+    # load. metis.ko crashes (NULL deref, lowlt_list_del_task) once real
+    # boot ramps up scheduling activity; prebuilt/vendor_dlkm/
+    # modules.blocklist blocks it (+mi_schedule), but that only takes
+    # effect if modprobe is actually invoked with -b - plain `modprobe -a`
+    # (the stock line) ignores modules.blocklist entirely. rootdir/bin/
+    # init.insmod.sh already parses a "-b *" cfg arg into "modprobe -a -b
+    # ...". See README Round 58 / modules.blocklist for the full writeup.
+    "vendor/etc/init.insmod.mt6789.cfg": blob_fixup().regex_replace(
+        r"modprobe\|\*", "modprobe|-b *"
+    ),
     # Microtrust mitee: libmt_mitee links keymint-V3-ndk (blob era), but the
     # source keymint utils on lineage-23.2 are V4 -> "multiple versions of the
     # same aidl_interface". keymint V4 is a superset, and libmt_mitee is a
