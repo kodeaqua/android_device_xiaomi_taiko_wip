@@ -138,6 +138,43 @@ BOARD_KERNEL_CMDLINE := bootopt=64S3,32N2,64N2
 # ship.
 BOARD_KERNEL_CMDLINE += androidboot.selinux=permissive
 
+# TEMPORARY DIAGNOSTIC (Round 60, first-boot bring-up) - DO NOT SHIP.
+# The Round 56 permissive test (above) didn't change the hang - still no
+# bootanimation, no adb, and pstore stays empty across every fresh attempt
+# (checked with pstore explicitly cleared beforehand each time). That rules
+# out a plain SELinux denial or a crash/oops (both would leave a trace) -
+# what's left is a genuine silent hang: something is stuck (deadlocked,
+# blocked forever on a syscall, or spinning) without the kernel treating it
+# as an error.
+#
+# The kernel has two built-in detectors for exactly this class of bug, but
+# by default they only print a warning and keep going - not useful when
+# nothing is watching the console and pstore only captures actual panics.
+# Forcing both to panic instead turns a silent hang into a real oops with a
+# stack trace of whatever's actually stuck, captured in pstore like any
+# other crash:
+#   - softlockup_panic: a CPU spinning without ever rescheduling
+#     (softlockup, e.g. a genuine infinite loop or spinlock deadlock)
+#   - hung_task_panic: a task blocked in D-state (uninterruptible sleep,
+#     e.g. stuck on a mutex, or a syscall - a stuck first-stage mount is
+#     exactly this class) past hung_task_timeout_secs
+# Both require CONFIG_SOFTLOCKUP_DETECTOR / CONFIG_DETECT_HUNG_TASK to be
+# built into this GKI kernel to have any effect at all - both are common
+# stock GKI defconfig options, but unconfirmed for this exact build; if
+# pstore is still empty after this, that's the likely reason, not proof the
+# hang isn't kernel-level (userspace waiting on a property/service that
+# itself isn't blocked on I/O wouldn't trip either detector).
+# hung_task_timeout_secs left at a relatively low 30s (default 120s) purely
+# to get a faster signal - the observed hang lasts many minutes to hours,
+# so this is nowhere near tight enough to risk a false positive from a
+# merely-slow legitimate boot step.
+# Revert this block once the real cause is found; must never ship - a false
+# hung-task/softlockup trip during a slow-but-legitimate storage stall would
+# cause a spurious reboot in normal use.
+BOARD_KERNEL_CMDLINE += softlockup_panic=1
+BOARD_KERNEL_CMDLINE += hung_task_panic=1
+BOARD_KERNEL_CMDLINE += hung_task_timeout_secs=30
+
 # Stock vendor_boot bootconfig payload (verbatim from the dumped vendor_boot.img)
 BOARD_BOOTCONFIG += kernel.rcu_nocbs=all
 BOARD_BOOTCONFIG += kernel.rcutree.enable_rcu_lazy=1

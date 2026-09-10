@@ -362,6 +362,111 @@ actually blocked, or nothing at all) instead of trusting `console-ramoops`
 alone - clear pstore first (`adb shell rm -f /sys/fs/pstore/*`) so a stale
 record can't be mistaken for a fresh one again.
 
+### Round 60 - normal boot still silently hangs after Round 59; forced hung-task/softlockup panic + a bisection plan
+
+**Diagnostic added, not yet reflashed/confirmed.** Every fresh normal-boot
+attempt since Round 58 (pstore explicitly cleared before each one) hangs at
+the bootloader splash with **zero** trace anywhere: `adb devices` stays
+empty the entire time, no auto AP-watchdog reset even after being left for
+20-30+ minutes (contrast the pre-Round-58 behaviour, which *did* eventually
+watchdog-reset - see Round 57/58), and pstore comes back completely empty
+every time, not stale, actually empty. That combination rules out both a
+plain SELinux denial (Round 56 already ruled that out - permissive changes
+nothing) and a crash/oops (would leave a pstore trace) - what's left is a
+genuine silent hang, something blocked or spinning forever that the kernel
+itself never flags as an error.
+
+**Reasoning pass (no new capture, working from everything already
+gathered)**, several candidate explanations checked and ruled out:
+- **USB gadget not configured yet, not actually hung** - `adb` never
+  appearing could in principle mean boot reached a working state without
+  ever bringing up the gadget. Ruled out: `rootdir/etc/init.mt6789.usb.rc`
+  only runs its `on post-fs` gadget setup after `switch_root` to the real
+  `/vendor` succeeds (second-stage). `adb` never appearing at all means
+  boot never got that far, not that it finished silently.
+- **This device's own `fstab.mt6789` never reaching normal boot** (the
+  Layer-2 gap flagged since Round 54) - extracted and fully diffed the
+  *entire* stock `first_stage_ramdisk/fstab.mt6789` against this tree's own
+  copy. Every `first_stage_mount` entry this tree needs (`vendor`,
+  `vendor_dlkm`, `odm_dlkm`, `system_dlkm`, `system`, `system_ext`,
+  `product`, `mi_ext`, `metadata`, `boot`, `vbmeta*`) is present in stock's
+  copy too - nothing missing. The only difference is `avb` (bare) vs this
+  tree's `avb=vbmeta_vendor`/`avb=vbmeta_system`, which doesn't matter right
+  now either way: top-level `vbmeta_a` carries `--disable-verification`, and
+  `avb_slot_verify()` returns before processing any descriptor when that
+  flag is set (confirmed directly against `external/avb/libavb/
+  avb_slot_verify.c` back in Round 58's investigation). Structurally
+  equivalent - not the cause.
+- **Custom Xiaomi branching logic in `init.rc` gone wrong for the normal-
+  boot path specifically** - the actual top-level `/init.rc` shipped in the
+  stock PLATFORM fragment (`system/etc/init/hw/init.rc`) is stock,
+  unmodified 210-line AOSP boilerplate (just the standard `import`
+  statements), no device-specific mode branching lives there at all.
+- **The LineageOS RECOVERY fragment silently overriding something
+  boot-critical that PLATFORM alone is missing** (cpio concatenation lets a
+  later entry replace an earlier same-path one - genuinely could hide a
+  PLATFORM-only bug). Checked by unpacking `prebuilt/vendor_boot.img`'s own
+  *stock* recovery fragment (Xiaomi's own, not this tree's) and diffing its
+  full file list against PLATFORM: only recovery-scoped content (recovery
+  UI `res/images/*`, `init.recovery.mt6789.rc`, a recovery-only
+  `first_stage_ramdisk/fstab.emmc`, the recovery fastbootd HAL rc) - nothing
+  that would matter for or reveal a normal-boot-specific PLATFORM bug. One
+  genuine, minor finding along the way: stock's own
+  `init.recovery.mt6789.rc` has one more line than this tree's Round 55
+  fix - `setprop sys.usb.ffs.aio_compat 0` - matching the TODO MySelly's
+  reference tree already flagged; still not applied, still not believed to
+  matter for the current bug, but worth folding into recovery's fix
+  eventually.
+- **Swapping to Google's own upstream `ci.android.com` GKI android16-6.12
+  build** (user question) - not viable, not attempted: that build ships
+  *zero* MediaTek platform code (this device's clocks, PMIC, UFS controller
+  etc. all load as separate prebuilt `.ko` from `prebuilt/modules/` -
+  even basic clock init is a vendor module here, not compiled into the
+  base kernel). Every `.ko` in this tree is KMI-locked to the *exact* stock
+  build string (`6.12.30-android16-5-g6e872b4863d6-ab13847919-4k`), not
+  just "android16-6.12" in general - GKI's ABI stability guarantee only
+  covers the officially frozen symbol/vendor-hook surface, not MediaTek's
+  own internal driver symbols. Swapping kernels would very likely not even
+  reach a bootloader-independent boot stage at all, let alone fix anything.
+
+**The one fact from all of this worth building on**: this tree's own GSI
+test (Round 54/55, `system` = LineageOS GSI, `vendor`/`vendor_dlkm`/
+`product` = still **stock**, i.e. before this tree's own `super.img` had
+ever been flashed) booted to a **working normal system** on this exact
+`boot.img`/`dtbo.img`/PLATFORM-fragment combination - all three of which
+have been unchanged since. The only things that changed between "booted
+fine" and "now hangs" are this tree's own `system`/`vendor`/`vendor_dlkm`/
+`product` content. `metis.ko` (confirmed present + crashing in `vendor_dlkm`
+prior to Round 58) is one proven-real difference, but Round 58's fix
+hasn't been confirmed effective on real hardware since - every capture
+pulled after reflashing turned out to be from recovery (Round 59), never
+an actual fresh normal-boot capture. Whether Round 58 is even active on
+whatever's currently flashed remains unconfirmed (`/vendor` isn't mounted
+in recovery, so its content can't be checked from there).
+
+**Two things done this round, not yet tested:**
+1. **Forced hung-task/softlockup panic** (`BoardConfig.mk`) - both
+   detectors are standard kernel debug facilities that normally just log a
+   warning and keep going; forcing them to panic instead turns this silent
+   hang into a real oops with a stack trace of whatever's actually stuck,
+   which pstore *will* capture (unlike a silent hang). Needs
+   `CONFIG_SOFTLOCKUP_DETECTOR`/`CONFIG_DETECT_HUNG_TASK` built into this
+   GKI kernel to have any effect - common GKI defconfig options, but
+   unconfirmed for this exact build. If pstore is *still* empty after this
+   reflash, that specifically narrows things down: either those configs
+   aren't built in, or the hang is a userspace wait (blocked on a property
+   or a service that isn't itself I/O-blocked) rather than a stuck kernel
+   task - not proof the hang is fixed either way.
+2. **A bisection plan, not yet run**: since GSI+stock-vendor booted but
+   this tree's own system+vendor doesn't, flashing **this tree's own
+   `vendor`/`vendor_dlkm`/`product` alongside GSI's `system`** (instead of
+   this tree's own `system` too) would say which side of that split the
+   real breakage is on - vendor-side (metis and/or something else in
+   `vendor_dlkm`/`vendor`) vs system-side (something in this tree's own
+   AOSP/LineageOS `system.img` unrelated to metis entirely). Worth running
+   before assuming Round 58's `vendor_dlkm` fix is the only remaining
+   suspect.
+
 ### Round 59 - `metis.ko` crashes in *recovery* too - a second, independent copy the Round 58 blocklist never touched
 
 **Fix applied, not yet reflashed/confirmed.** After Round 58's `super.img`
