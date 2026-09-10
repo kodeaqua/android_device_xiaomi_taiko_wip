@@ -42,3 +42,8 @@
 # a re-extract if a newer HyperOS dump ever ships a fixed metis.ko.
 blocklist metis
 blocklist mi_schedule
+# task_turbo.ko already hard-depends on metis (modules.dep), so it would
+# fail via the dependency chain anyway - blocklisted directly too, purely
+# to skip straight past it instead of a noisy failed insmod attempt+log
+# line on every boot.
+blocklist task_turbo
