@@ -302,6 +302,80 @@ if [ -n "$vrd" ] && [ "${vn:-0}" -gt 0 ]; then pass "vendor_boot ramdisk modules
 else warn "vendor_boot ramdisk .ko dir not located (modules may already be packed into vendor_boot.img)"; fi
 
 # ---------------------------------------------------------------------------
+sec "vendor_dlkm modprobe blocklist (Round 58 - metis boot-hang fix)"
+# metis.ko NULL-derefs (lowlt_list_del_task) once second-stage boot ramps up.
+# It's neutralised by a modules.blocklist + `modprobe -b`, NOT by removing it
+# from modules.load (modprobe -a pulls it back as a dep of scheduler.ko etc).
+bl="$OUT/vendor_dlkm/lib/modules/modules.blocklist"
+if [ -s "$bl" ]; then
+  miss=0
+  for m in metis mi_schedule task_turbo; do
+    grep -qE "^blocklist[[:space:]]+$m\b" "$bl" || { warn "  modules.blocklist missing: blocklist $m"; miss=1; }
+  done
+  [ "$miss" -eq 0 ] && pass "modules.blocklist blocks metis + mi_schedule + task_turbo"
+else
+  fail "vendor_dlkm/lib/modules/modules.blocklist MISSING - metis.ko will load and NULL-deref -> boot hang at logo (Round 58)"
+fi
+cfg="$OUT/vendor/etc/init.insmod.mt6789.cfg"
+if [ -s "$cfg" ]; then
+  if grep -qE '^modprobe\|-b \*' "$cfg"; then
+    pass "init.insmod.mt6789.cfg: modprobe|-b *  (blob_fixup applied - blocklist is honored)"
+  elif grep -qE '^modprobe\|\*' "$cfg"; then
+    fail "init.insmod.mt6789.cfg still has 'modprobe|*' (no -b) - modules.blocklist is IGNORED, metis loads, boot hangs. extract-files.py blob_fixup didn't apply (re-extract vendor/xiaomi/taiko)."
+  else
+    warn "init.insmod.mt6789.cfg: no 'modprobe|...' line found - verify how vendor_dlkm modules load"
+  fi
+else
+  warn "vendor/etc/init.insmod.mt6789.cfg absent in the built image"
+fi
+# metis/mi_schedule/task_turbo MUST still be in modules.load (stock) - blocklist
+# neutralises them; removing the lines too was the ineffective Round 57 state.
+mlc="$OUT/vendor_dlkm/lib/modules/modules.load"
+if [ -s "$mlc" ]; then
+  for m in metis.ko mi_schedule.ko task_turbo.ko; do
+    grep -qxF "$m" "$mlc" || warn "  $m not in modules.load - Round 57 (ineffective) state? blocklist is the fix, not line removal"
+  done
+fi
+info "  blast radius (expected): scheduler / cpufreq_sugov_ext / mtk_core_ctl /"
+info "  vip_engine / mtk_fpsgo_v3 / fpsgo / powerhal_cpu_ctrl / ccidvfs /"
+info "  mtk-vcodec-sys-api (HW video -> SW decode) all fail to insmod cleanly"
+
+# ---------------------------------------------------------------------------
+sec "vendor_boot PLATFORM fragment (Round 54 - normal-boot first-stage rootfs)"
+# This device's LK loads the PLATFORM (0x1) vendor_ramdisk fragment ALONE for a
+# normal boot. With TARGET_NO_KERNEL + no init_boot the build's own generated
+# fragment has no /init -> "Unable to mount root fs on /dev/ram" panic. Fix
+# (R54): build/tasks/vendor_boot.mk repoints INTERNAL_VENDOR_RAMDISK_TARGET at
+# the stock fragment prebuilt/vendor_ramdisk.cpio.lz4.
+[ -s "$DT/prebuilt/vendor_ramdisk.cpio.lz4" ] \
+  && pass "prebuilt/vendor_ramdisk.cpio.lz4 present ($(mib "$DT/prebuilt/vendor_ramdisk.cpio.lz4") MiB)" \
+  || fail "prebuilt/vendor_ramdisk.cpio.lz4 MISSING - normal boot will panic 'Unable to mount root fs' (Round 54)"
+[ -s "$DT/build/tasks/vendor_boot.mk" ] \
+  && grep -q 'INTERNAL_VENDOR_RAMDISK_TARGET' "$DT/build/tasks/vendor_boot.mk" \
+  && pass "build/tasks/vendor_boot.mk repoints INTERNAL_VENDOR_RAMDISK_TARGET" \
+  || fail "build/tasks/vendor_boot.mk missing / not repointing INTERNAL_VENDOR_RAMDISK_TARGET (Round 54)"
+# Prove the built vendor_boot.img actually carries the complete fragment (has
+# /init), not the broken generated one.
+ub="$TOP/out/host/linux-x86/bin/unpack_bootimg"
+if [ -x "$ub" ] && [ -s "$OUT/vendor_boot.img" ] && have lz4; then
+  d=$(mktemp -d)
+  "$ub" --boot_img "$OUT/vendor_boot.img" --format mkbootimg --out "$d" >/dev/null 2>&1
+  frag=$(ls -1 "$d"/vendor_ramdisk00 "$d"/vendor-ramdisk-by-name/* 2>/dev/null | head -1)
+  if [ -s "$frag" ]; then
+    lst=$(lz4 -d -c "$frag" 2>/dev/null | cpio -t 2>/dev/null)
+    echo "$lst" | grep -qxE 'init|first_stage_ramdisk' \
+      && pass "vendor_boot PLATFORM fragment has /init + first_stage_ramdisk (complete rootfs)" \
+      || fail "vendor_boot PLATFORM fragment has NO /init - normal boot will panic (Round 54 not effective)"
+    echo "$lst" | grep -q 'first_stage_ramdisk/fstab.mt6789' \
+      && warn "  its fstab is stock HyperOS's (Layer 2 - device.mk PRODUCT_COPY_FILES fstab is dead code for normal boot; harmless while AVB verification is disabled, MUST fix before re-enabling AVB)"
+  else warn "  could not unpack vendor_boot.img PLATFORM fragment"; fi
+  rm -rf "$d"
+else
+  info "  unpack_bootimg / lz4 not available - skipping fragment content check"
+  info "  (Layer 2: normal-boot first-stage fstab is stock's, not rootdir/etc/fstab.mt6789 - deferred gap)"
+fi
+
+# ---------------------------------------------------------------------------
 sec "fstab"
 for f in "vendor/etc/fstab.mt6789" \
          "vendor_ramdisk/first_stage_ramdisk/fstab.mt6789" \
@@ -324,6 +398,18 @@ sec "Recovery"
 [ -s "$OUT/vendor_boot.img" ] && pass "recovery rides in vendor_boot (no recovery.img expected)" || true
 [ -e "$OUT/recovery.img" ] && warn "recovery.img built - device has no recovery partition (BOARD_MOVE_RECOVERY_RESOURCES_TO_VENDOR_BOOT)" || info "  no recovery.img (correct)"
 [ -e "$OUT/vendor_ramdisk/first_stage_ramdisk/fstab.mt6789" ] && pass "first-stage fstab in vendor ramdisk" || warn "first-stage fstab not in vendor ramdisk"
+# Round 55: recovery ADB only enumerates with a configfs USB gadget - AOSP
+# recovery init.rc forces sys.usb.configfs=0 (legacy android_usb, absent on this
+# GKI kernel). Override lives in recovery/root/init.recovery.mt6789.rc.
+rr="$DT/recovery/root/init.recovery.mt6789.rc"
+if [ -s "$rr" ]; then
+  grep -qE 'setprop[[:space:]]+sys\.usb\.configfs[[:space:]]+1' "$rr" \
+    && grep -qE 'setprop[[:space:]]+sys\.usb\.controller' "$rr" \
+    && pass "recovery/root/init.recovery.mt6789.rc: configfs gadget + UDC set (Round 55 - adb-in-recovery)" \
+    || warn "recovery/root/init.recovery.mt6789.rc present but missing sys.usb.configfs 1 / sys.usb.controller (Round 55)"
+else
+  warn "recovery/root/init.recovery.mt6789.rc absent - adb won't enumerate in recovery (Round 55)"
+fi
 
 # ---------------------------------------------------------------------------
 sec "AVB"

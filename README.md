@@ -221,15 +221,20 @@ on flash) · **generated-makefile hygiene** (no `.so`/`.apk` in
 `PRODUCT_COPY_FILES` - the Round-49 regression) · **round-by-round drop
 verification** (every blob dropped for a source module must exist in the built
 image - FAIL = restore that `proprietary-files.txt` line) · kept MTK/Xiaomi
-blobs + dropped-on-purpose absent · **MVPU island** (`libmvpu_wrapper` +
-`libswtcc`/`libultrahdr_mtk`) · VINTF (device manifest HALs, the Round-35
-proprietary-HAL FCM, `checkvintf --check-compat`) · kernel modules
-(`modules.load` ↔ `.ko`, `modules.dep`) · fstab (dual-fs, metadata enc, SD-path
-fix, checkpoint, `system_dlkm` AVB chain) · recovery-in-vendor_boot · AVB
+blobs + dropped-on-purpose absent · **GPU/graphics loader paths** (Mali
+`egl/`+`hw/` symlinks resolve) · **MVPU island** · VINTF · kernel modules
+(`modules.load` ↔ `.ko`, `modules.dep`, `vendor/lib/modules` symlink) ·
+**vendor_dlkm modprobe blocklist** (Round 58: `modules.blocklist` blocks
+`metis`/`mi_schedule`/`task_turbo` AND `init.insmod.mt6789.cfg` carries
+`modprobe|-b *` - both required or `metis.ko` NULL-derefs → logo hang) ·
+**vendor_boot PLATFORM fragment** (Round 54: `prebuilt/vendor_ramdisk.cpio.lz4`
++ `build/tasks/vendor_boot.mk` repoint; if `unpack_bootimg` is on `$PATH` it
+unpacks the built `vendor_boot.img` and checks the PLATFORM fragment has
+`/init`, and flags that its fstab is stock's = the Layer-2 deferred gap) ·
+fstab · recovery-in-vendor_boot + **recovery ADB configfs** (Round 55) · AVB
 (`avbtool`: flags=3, rollback locations, chained descriptors) · build.prop
-(Round 29-30: SPL, `ro.product.vendor.name`, no `sdk_full` dup,
-`ab_ota_partitions` full list) · SELinux (precompiled hash match) · APEX.
-`avbtool` / `checkvintf` on `$PATH` unlock the AVB and check-compat sections.
+(Round 29-30) · SELinux · APEX. `avbtool` / `checkvintf` / `unpack_bootimg` on
+`$PATH` unlock the extra checks.
 
 ## AOSP-core audit (source.android.com/docs/core)
 
