@@ -40,7 +40,7 @@ now. `BOARD_SUPER_PARTITION_SIZE` is real (11 GiB from the scatter).
 | `sepolicy/vendor/` | **yunluo starting point** — regenerate from first-boot `avc: denied` |
 | `recovery/root/` | auto-merged into the recovery ramdisk root by `build/make/core/Makefile` (`$(TARGET_DEVICE_DIR)/recovery/root`, no `BoardConfig.mk`/`device.mk` wiring needed). Currently just `init.recovery.mt6789.rc` — forces recovery's USB gadget onto configfs (AOSP recovery's stock `init.rc` defaults to the legacy `android_usb` sysfs path, which this kernel doesn't implement) — see README Round 55. |
 | `overlay/`, `overlay-lineage/` | RRO packages (in `PRODUCT_PACKAGES`, **not** `DEVICE_PACKAGE_OVERLAYS`). `power_profile.xml` battery = 9000, `config_defaultPeakRefreshRate` = 90 (right); auto-brightness curves still yunluo's |
-| `prebuilt/` | `boot.img`/`dtbo.img` (used as-is), `vendor_boot.img` (reference), `dtb/mt6789.dtb`, `modules/`, `vendor_dlkm/`, `system_dlkm/`, `vendor_ramdisk.cpio.lz4` (stock PLATFORM vendor_boot fragment, byte-for-byte — see Round 54). `vendor_dlkm/modules.blocklist` blocks `metis`/`mi_schedule` (crash NULL-derefs on real boot — Round 58); needs `vendor/etc/init.insmod.mt6789.cfg`'s `blob_fixup` (`modprobe|-b *`) to actually take effect, since plain `modprobe -a` ignores it. |
+| `prebuilt/` | `boot.img`/`dtbo.img` (used as-is), `vendor_boot.img` (reference), `dtb/mt6789.dtb`, `modules/`, `vendor_dlkm/`, `system_dlkm/`, `vendor_ramdisk.cpio.lz4` (stock PLATFORM vendor_boot fragment, byte-for-byte — see Round 54). `vendor_dlkm/modules.blocklist` blocks `metis`/`mi_schedule` (crash NULL-derefs on real boot — Round 58); needs `vendor/etc/init.insmod.mt6789.cfg`'s `blob_fixup` (`modprobe|-b *`) to actually take effect, since plain `modprobe -a` ignores it. **`metis`/`mi_schedule` also ship as a *second*, independent copy baked directly into `vendor_ramdisk.cpio.lz4` itself** (`lib/modules/metis.ko` + `modules.load.recovery`, read only when RECOVERY is concatenated onto PLATFORM — i.e. entering recovery) — the vendor_dlkm blocklist above can't reach it (`/vendor` isn't mounted yet). Blocked via a `lib/modules/modules.blocklist` entry **spliced directly into the cpio byte stream** (new cpio entry inserted before `TRAILER!!!`, nothing else re-serialized) — see Round 59. **Never extract+repack this file wholesale as a non-root user** — every entry's stored `root:root` ownership silently collapses to the extracting user's uid/gid, which the on-device unpacker needs correct; always splice new entries in instead, or repack under `fakeroot`. |
 | `kernel-headers/Makefile` | stub `TARGET_KERNEL_SOURCE` (wired in `BoardConfig.mk`). No kernel source, but LineageOS' `generated_kernel_includes` genrule (pulled by `generated_kernel_headers` consumers, e.g. `PowerOffAlarm`) still runs `make -C $(TARGET_KERNEL_SOURCE) headers_install` — stub makes an empty `usr/include`. See README Round 31. |
 
 ## Boot / kernel model (do not "fix" this into a normal kernel build)
@@ -73,6 +73,11 @@ now. `BOARD_SUPER_PARTITION_SIZE` is real (11 GiB from the scatter).
   `prebuilt/vendor_boot.img`). Do **not** "clean this up" back to the
   generated fragment — see README Round 54 and the comment in that file for
   the full mechanism + evidence. RECOVERY stays built from source, untouched.
+  Being stock-verbatim, this fragment carries its **own** embedded
+  `lib/modules/*.ko` + `modules.load`/`modules.load.recovery`, entirely
+  separate from `prebuilt/vendor_dlkm/` — see the `prebuilt/` row above
+  (Round 59) before assuming a vendor_dlkm-side kernel-module fix reaches
+  recovery too.
 - `dtbo.img`: stock, `BOARD_PREBUILT_DTBOIMAGE`. `BOARD_KERNEL_SEPARATED_DTBO`
   is deliberately unset (build-from-source flag only).
 - `odm` is folded into `/vendor/odm` (`TARGET_COPY_OUT_ODM := vendor/odm`) — no

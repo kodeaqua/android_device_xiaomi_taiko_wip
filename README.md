@@ -226,7 +226,12 @@ blobs + dropped-on-purpose absent · **GPU/graphics loader paths** (Mali
 (`modules.load` ↔ `.ko`, `modules.dep`, `vendor/lib/modules` symlink) ·
 **vendor_dlkm modprobe blocklist** (Round 58: `modules.blocklist` blocks
 `metis`/`mi_schedule`/`task_turbo` AND `init.insmod.mt6789.cfg` carries
-`modprobe|-b *` - both required or `metis.ko` NULL-derefs → logo hang) ·
+`modprobe|-b *` - both required or `metis.ko` NULL-derefs → logo hang;
+Round 59: a *second*, independent copy of `metis`/`mi_schedule` is baked
+into `prebuilt/vendor_ramdisk.cpio.lz4` itself, loaded only when RECOVERY
+is concatenated onto PLATFORM - blocked separately via a spliced-in
+`lib/modules/modules.blocklist` inside that cpio, since Round 58's fix
+lives on `/vendor`, which isn't mounted yet when this copy loads) ·
 **vendor_boot PLATFORM fragment** (Round 54: `prebuilt/vendor_ramdisk.cpio.lz4`
 + `build/tasks/vendor_boot.mk` repoint; if `unpack_bootimg` is on `$PATH` it
 unpacks the built `vendor_boot.img` and checks the PLATFORM fragment has
@@ -356,6 +361,77 @@ touched this round) + reflash `super` + retest. Verify from recovery with
 actually blocked, or nothing at all) instead of trusting `console-ramoops`
 alone - clear pstore first (`adb shell rm -f /sys/fs/pstore/*`) so a stale
 record can't be mistaken for a fresh one again.
+
+### Round 59 - `metis.ko` crashes in *recovery* too - a second, independent copy the Round 58 blocklist never touched
+
+**Fix applied, not yet reflashed/confirmed.** After Round 58's `super.img`
+reflash, testing reported a *different* symptom (stuck at the Xiaomi logo
+12+ hours, no AP watchdog reset - unlike the earlier crash-then-reset
+cycle), suggesting `metis` might genuinely be fixed and something else is
+now the blocker. Chasing that down with fresh `adb shell dmesg`/pstore
+pulls kept turning up the *exact* Round 57/58 crash signature again
+(`lowlt_list_del_task+0x70/0x170 [metis]`, NULL deref, `Internal error:
+Oops: 0000000096000005`) - until checking each capture's own timestamp
+line showed **every one of them was from a `recovery: Starting recovery`
+session**, not normal boot (one dated the day before, stale pstore never
+cleared; one live `dmesg` from the device sitting in recovery that same
+minute). The 12-hour-stuck normal-boot symptom and this recovery crash are
+two unrelated things that got tangled together by not checking which mode
+each capture actually came from.
+
+**Root cause**: `metis.ko` exists as **two independent copies** on this
+device. `prebuilt/vendor_dlkm/` (Round 58's target) is one; the other is
+baked directly into `prebuilt/vendor_ramdisk.cpio.lz4` itself -
+`lib/modules/metis.ko` + `lib/modules/mi_schedule.ko`, loaded via
+`lib/modules/modules.load.recovery`. That file only gets read when
+**RECOVERY is concatenated onto PLATFORM** (Round 54: entering recovery =
+PLATFORM+RECOVERY together, normal boot = PLATFORM alone) - confirmed
+`lib/modules/modules.load` (the normal-boot list) does **not** list
+`metis`/`mi_schedule` at all, so this specific copy should be a
+recovery-only problem, not the normal-boot one. Round 58's fix lives in
+`vendor/etc/init.insmod.mt6789.cfg` + `vendor_dlkm/modules.blocklist` -
+both ship on the real `/vendor` partition, which isn't even mounted yet
+when this ramdisk-embedded copy loads (confirmed on-device: `cat
+/vendor/etc/init.insmod.mt6789.cfg` from recovery → "No such file or
+directory"). Two completely separate loading mechanisms, two completely
+separate fixes needed - blocking one was never going to touch the other.
+
+**Fix**: this ramdisk's own `lib/modules/modules.dep` shows `metis.ko`'s
+only dependency is `mi_schedule.ko`, and nothing else in
+`modules.load.recovery` depends on either (checked directly - no other
+recovery driver at risk from the same "hard-dependencies cannot be
+blocklisted" blast radius Round 58 hit). Added a
+`lib/modules/modules.blocklist` entry (AOSP's standard first-stage
+`LoadKernelModules` mechanism reads this file next to `modules.load*`
+automatically - no script/cfg changes needed here, unlike Round 58's
+custom MTK `modprobe -a`/`-b` path) blocking `metis`+`mi_schedule`.
+**Not** done via extract+repack (re-serializing all ~715 existing cpio
+entries as a non-root user silently drops their stored `root:root`
+ownership down to the extracting user's uid/gid - confirmed by extracting
+and checking: `metis.ko` came back owned `1000:1000`, not `root:root` -
+would have broken the ramdisk's real permissions on next real boot).
+Instead, spliced a single new cpio entry (`070701` newc header, forged
+`uid=0 gid=0 mode=0100644`, matching every other regular file in the
+archive) directly into the byte stream, right before the existing
+`TRAILER!!!` entry, then re-wrote the trailer after it - zero bytes of any
+of the other 715 entries touched. Verified: extracting the spliced archive
+back out shows `metis.ko`/`vendor_file_contexts`/`modules.load.recovery`/
+every other spot-checked file byte-identical to the pre-splice extraction,
+entry count exactly +1, new file present with correct root-owned 644
+permissions. Recompressed with `lz4 -l` (legacy frame, matching the
+original file's magic bytes) and decompress-round-tripped byte-identical
+before committing.
+
+**Still open**: this fixes recovery only. The actual Round 58 vendor_dlkm
+fix for **normal boot** has *still* never been confirmed with fresh
+evidence - every capture pulled since the Round 58 flash turned out to be
+from recovery (see above), so whether `metis` is really gone from normal
+boot, and what the 12-hour-stuck-no-reset symptom actually is, both remain
+open. Next real step once this recovery fix is reflashed: boot straight to
+**normal system** (not recovery), clear pstore first, and if it hangs,
+pull fresh `dmesg`/pstore and confirm the session line says `init: init
+second stage started!` reaching well past kernel init (**not**
+`recovery: Starting recovery`) before trusting the capture at all.
 
 ### Round 57 - normal boot hangs forever at the bootloader logo: `metis.ko` NULL pointer oops
 
