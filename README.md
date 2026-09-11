@@ -366,12 +366,16 @@ record can't be mistaken for a fresh one again.
 
 **Diagnostic-only, no tree behaviour change** (kept the cmdline args - see
 below). User pointed at `MiCode/Xiaomi_Kernel_OpenSource` branch `yili-w-oss`
-(`arch/arm64/configs/gki_defconfig`) - "yili" is an unrelated Xiaomi device
-(codename doesn't resolve to anything documented, SoC unconfirmed, and
-checked separately this round - the rest of that branch is just the generic/
-common GKI kernel source with zero MediaTek content: no
+(`arch/arm64/configs/gki_defconfig`) - "yili" is the **Redmi K Pad 2**
+(confirmed by the user), a **Dimensity 9500** device - a completely
+different, unrelated, much higher-end MediaTek SoC family from this
+device's MT6789/Helio G100, closing off the "build a real kernel from this
+source" idea from two directions at once, not one: the branch is just the
+generic/common GKI kernel source with zero MediaTek content regardless (no
 `build.config.mtk.aarch64`, no device `build.config.<name>`, `modules.bzl`
-lists only generic upstream driver modules), but the branch suffix `-w-`
+lists only generic upstream driver modules), *and* even if it weren't, it's
+the wrong chip family entirely - no vendor driver source overlap with
+taiko would be possible either way. But the branch suffix `-w-`
 maps to **Android 16** in Xiaomi's own naming scheme (`q`=10 ... `v`=15,
 `w`=16) - the same Android/kernel vintage as this device's
 `android16-6.12`. That vintage match is what makes the file useful despite
