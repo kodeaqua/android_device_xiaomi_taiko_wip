@@ -96,6 +96,16 @@ blob_fixups: blob_fixups_user_type = {
         "android.hardware.security.keymint-V3-ndk.so",
         "android.hardware.security.keymint-V4-ndk.so",
     ),
+    # Round 63: the mitee KeyMint service NEEDs libcppbor_external.so, which is
+    # HyperOS's own second build variant of external/libcppbor (stock ships
+    # both libcppbor.so and libcppbor_external.so in /vendor/lib64 - different
+    # files, different SONAMEs, same upstream cppbor:: ABI). lineage-23.2's
+    # AOSP keymint service links plain "libcppbor" only, so that is the module
+    # this tree can actually install (device.mk, libcppbor.vendor); repoint the
+    # NEEDED at it instead of trying to build a module that may not exist here.
+    "vendor/bin/hw/android.hardware.security.keymint@4.0-service.mitee": blob_fixup()
+    .patchelf_version(patchelf_version)
+    .replace_needed("libcppbor_external.so", "libcppbor.so"),
     # graphics.common AIDL skew: the MTK gralloc / mapper / allocator / HWC /
     # GPU / codec2 blobs were built against android.hardware.graphics.common-V6
     # (HyperOS Android 16), but LineageOS 23.2 trunk froze V7. libgralloctypes /

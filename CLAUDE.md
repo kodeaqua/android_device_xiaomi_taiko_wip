@@ -14,18 +14,32 @@ seeded from is `lineage-23.0` — see "LineageOS 23.2 deltas" below.
 
 **State (2026-09-11):** pushed to `kodeaqua/android_device_xiaomi_taiko_wip`
 `lineage-23.2`. `brunch taiko` completes cleanly (since Round 51) — all work
-since is **real-hardware flash debugging** (Rounds 52-61, full detail in
+since is **real-hardware flash debugging** (Rounds 52-63, full detail in
 `README.md`). Recovery boots (Round 54/55, `adb` reachable); **normal system
 boot has never yet succeeded** — silent hang at the splash, no crash/pstore
 trace even with a forced `hung_task_panic`/`softlockup_panic` diagnostic
-(Round 60). Round 61 (static audit, no device access) pinned
-`PLATFORM_SECURITY_PATCH := 2026-08-01` in `device.mk` — this tree never
-overrode it before, which likely tripped mitee KeyMint's per-key rollback
-protection against pre-existing keys the TA already stamped at stock's real
-SPL — **not yet confirmed on real hardware**. See parent `CLAUDE.md` "Build
-status" and this repo's `README.md` Round 61 for the full chain of reasoning.
-Camera is **enabled**. `configs/audio|media|wifi` are taiko's own now.
-`BOARD_SUPER_PARTITION_SIZE` is real (11 GiB from the scatter).
+(Round 60). **Round 63 found the root cause** (static audit): the two mitee
+KeyMint/Gatekeeper HAL blobs carry `DISABLE_CHECKELF`, so soong never saw
+their AOSP support-lib dependencies and installed **none** of them into
+`/vendor/lib64` — the HALs die at the dynamic linker, keystore2 never reaches
+a KeyMint, and Android 16's `init.rc` blocks forever in `on post-fs-data` at
+`wait_for_prop keystore.module_hash.sent true` (no timeout → no adb, no
+panic, no pstore, recovery unaffected). Fixed by installing the 14 vendor
+variants explicitly in `device.mk` + a `libcppbor_external`→`libcppbor`
+`replace_needed`; `verify-build.sh` now FAILs if any is missing. Round 61's
+`PLATFORM_SECURITY_PATCH := 2026-08-01` pin stays (same subsystem, later
+symptom). **Not yet confirmed on real hardware.** Camera is **enabled**.
+`configs/audio|media|wifi` are taiko's own now. `BOARD_SUPER_PARTITION_SIZE`
+is real (11 GiB from the scatter).
+
+**Rule learned the hard way (Round 63):** dropping a blob because it collides
+with an AOSP source module is only *half* a fix. `vendor_available: true`
+makes a lib **buildable** for vendor; soong installs the vendor variant only
+when an **installed vendor module depends on it**. A prebuilt HAL with
+`;DISABLE_CHECKELF` declares no dependencies at all — so its libs silently
+never ship. Whenever you drop a blob lib "because source provides it", add
+the corresponding `<module>.vendor` to `device.mk` **in the same change**,
+and prefer fixing `check_elf` over disabling it.
 
 ## File responsibilities
 

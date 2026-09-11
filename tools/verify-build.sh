@@ -209,6 +209,37 @@ ec="$OUT/vendor/lib64/egl/egl.cfg"; [ -f "$ec" ] || ec="$OUT/vendor/lib/egl/egl.
 [ -f "$ec" ] && { pass "egl.cfg present"; grep -v '^#' "$ec" | sed 's/^/      /'; } || info "  no egl/egl.cfg (loader auto-probes libGLES_mali)"
 
 # ---------------------------------------------------------------------------
+sec "KeyMint / Gatekeeper mitee deps (Round 63 - boot-critical)"
+# Both mitee HAL blobs carry ;DISABLE_CHECKELF, so nothing in the build
+# verifies their NEEDED libs. If any of these is missing the HAL dies at the
+# dynamic linker, keystore2 never reaches a KeyMint, and Android 16's init.rc
+# blocks forever in `on post-fs-data` at "wait_for_prop
+# keystore.module_hash.sent true" - splash forever, no adb, no panic, no
+# pstore. See README Round 63.
+kmdep(){ # $1 = lib filename
+  if [ -e "$OUT/vendor/lib64/$1" ]; then pass "vendor/lib64/$1"
+  else fail "vendor/lib64/$1 MISSING - keymint/gatekeeper HAL will not start (device.mk: add ${1%.so}.vendor)"; fi; }
+for l in android.hardware.security.keymint-V4-ndk.so \
+         android.hardware.security.rkp-V3-ndk.so \
+         android.hardware.security.sharedsecret-V1-ndk.so \
+         android.hardware.security.secureclock-V1-ndk.so \
+         android.hardware.gatekeeper-V1-ndk.so \
+         lib_android_keymaster_keymint_utils.so \
+         libcppbor.so libgatekeeper.so libkeymaster4support.so \
+         libkeymaster_messages.so libkeymaster_portable.so \
+         libkeymint.so libkeymint_remote_prov_support.so libkeymint_support.so; do
+  kmdep "$l"
+done
+# The blob NEEDs libcppbor_external.so (HyperOS's 2nd cppbor build variant);
+# extract-files repoints it at libcppbor.so. Confirm no stale NEEDED survived.
+km="$OUT/vendor/bin/hw/android.hardware.security.keymint@4.0-service.mitee"
+if [ -f "$km" ] && command -v readelf >/dev/null; then
+  readelf -d "$km" 2>/dev/null | grep -q "libcppbor_external.so" \
+    && fail "keymint blob still NEEDs libcppbor_external.so - blob_fixup did not apply (re-run extract-files.py)" \
+    || pass "keymint blob NEEDED repointed off libcppbor_external"
+fi
+
+# ---------------------------------------------------------------------------
 sec "MVPU island (Round 49b)"
 for f in libmvpu_wrapper.so libmvpu_engine.so libmvpu_runtime.so libmvpuop_mtk_cv.so \
          libmvpuop_mtk_nn.so libswtcc.so libultrahdr_mtk.so ; do

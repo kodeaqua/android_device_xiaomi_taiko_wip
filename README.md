@@ -362,6 +362,146 @@ actually blocked, or nothing at all) instead of trusting `console-ramoops`
 alone - clear pstore first (`adb shell rm -f /sys/fs/pstore/*`) so a stale
 record can't be mistaken for a fresh one again.
 
+### Round 63 - ROOT CAUSE of the normal-boot hang: the mitee KeyMint/Gatekeeper HALs ship without their AOSP support libs
+
+**Fix applied, not yet reflashed/confirmed.** Full static audit of the tree
+(no device access), tracing the one thing every previous round kept circling:
+**what can block forever with no crash, no adb, and no pstore trace, while
+leaving recovery completely healthy?** In init there is exactly one
+construct that does that - `wait_for_prop`, which has **no timeout** - so the
+audit enumerated every `wait_for_prop` reachable on a normal boot and checked
+whether the thing that sets each property can actually run in this build.
+
+**The blocker**: Android 16's own `/system/etc/init/hw/init.rc`, in
+`on post-fs-data`:
+
+```
+    # TODO(b/400439023): Remove once attest modules flagging is removed.
+    wait_for_prop apexd.status activated
+    # Wait for KeyMints to receive APEX module info before starting code from
+    # updateable APEXes. This is to prevent APEX modules from interfering in
+    # module measurement.
+    wait_for_prop keystore.module_hash.sent true
+    perform_apex_config
+```
+
+`keystore.module_hash.sent` is new in Android 16 and is set by `keystore2`
+only once it has actually reached a KeyMint instance. No KeyMint → init
+never leaves `post-fs-data` → `zygote-start` and `on boot` never run →
+**adbd never starts**. That is the entire observed symptom set, exactly:
+splash forever, no bootanimation, no adb, no kernel panic, no pstore record,
+no watchdog reset, and completely unaffected by `androidboot.selinux=permissive`.
+
+**Why there is no KeyMint**: both mitee HAL services are blobs -
+
+```
+vendor/bin/hw/android.hardware.security.keymint@4.0-service.mitee;DISABLE_CHECKELF
+vendor/bin/hw/android.hardware.gatekeeper-service.mitee;DISABLE_CHECKELF
+```
+
+`readelf -d` on them (against the dump) shows they link a set of **AOSP**
+support libraries that stock installs into `/vendor/lib64`:
+`android.hardware.security.{keymint-V4,rkp-V3,sharedsecret-V1,secureclock-V1}-ndk.so`,
+`android.hardware.gatekeeper-V1-ndk.so`, `libkeymint.so`,
+`lib_android_keymaster_keymint_utils.so`, `libkeymaster_portable.so`,
+`libgatekeeper.so`, `libcppbor_external.so` (+ via `libmt_mitee.so`:
+`libkeymint_support.so`, `libkeymint_remote_prov_support.so`,
+`libkeymaster4support.so`, `libkeymaster_messages.so`).
+
+**None of them are in this build.** Round 21-ish correctly dropped them from
+`proprietary-files.txt` - they collide with the AOSP source modules
+(`partition is different: system(libkeymint_support) !=
+vendor(prebuilt_libkeymint_support)`) - on the stated reasoning that *"the
+mitee keymint service blob links the source-built vendor variants"*. That
+reasoning is right but only **half the job**: `vendor_available: true` makes
+a library *buildable* for vendor; soong installs the vendor variant only when
+an **installed vendor module depends on it**. Both HAL blobs carry
+`DISABLE_CHECKELF`, so soong sees **no dependency at all** and installed
+none of them. The safety net that exists precisely to catch this
+(`check_elf_file`) is the thing that was switched off on those two lines.
+
+Verified these really are AOSP libs and not Microtrust code sharing a name
+(the distinction matters - the sibling TWRP tree had to rename its copies
+with a `_mitee` suffix because on its AOSP-13 base they genuinely were
+incompatible): the vendor copy of `libkeymint.so` **exports**
+`aidl::android::hardware::security::keymint::AndroidKeyMintDevice::*`,
+`keymaster::TKeymasterPassthroughEngine`, `keymaster::GetOsPatchlevel`,
+`AndroidSharedSecret`, `AndroidRemotelyProvisionedComponentDevice` - i.e.
+AOSP's own default KeyMint implementation - with **zero** mitee/Microtrust
+symbols. (Its md5 differs from the `/system/lib64` copy, but that is just the
+normal vendor-vs-system variant of one `vendor_available` module, not
+different code. Checksum inequality alone proves nothing here - the exported
+symbol set does.) taiko is Android 16 on both sides, so the lineage-23.2
+source libs are the same generation as the blob, unlike the TWRP case.
+
+**Fix** (`device.mk`): explicitly install the vendor variants -
+
+```
+PRODUCT_PACKAGES += \
+    android.hardware.security.keymint-V4-ndk.vendor \
+    android.hardware.security.rkp-V3-ndk.vendor \
+    android.hardware.security.sharedsecret-V1-ndk.vendor \
+    android.hardware.security.secureclock-V1-ndk.vendor \
+    android.hardware.gatekeeper-V1-ndk.vendor \
+    lib_android_keymaster_keymint_utils.vendor \
+    libcppbor.vendor libgatekeeper.vendor \
+    libkeymaster4support.vendor libkeymaster_messages.vendor \
+    libkeymaster_portable.vendor libkeymint.vendor \
+    libkeymint_remote_prov_support.vendor libkeymint_support.vendor
+```
+
+Module names cross-checked against the local `android_hardware_interfaces`
+(`lineage-23.2`): `android.hardware.security.keymint-service` (`vendor: true`)
+lists `libcppbor` / `libkeymaster_portable` / `libkeymint` / `rkp-V3-ndk` /
+`sharedsecret-V1-ndk` / `secureclock-V1-ndk` in `shared_libs`;
+`libkeymint_support` + `libkeymint_remote_prov_support` are in
+`security/keymint/support/Android.bp` (the latter explicitly
+`vendor_available: true`); frozen `aidl_api` covers keymint→V4, rkp→V3,
+sharedsecret/secureclock/gatekeeper→V1. Every one of these libs is also
+physically present in stock's own `/vendor/lib64`, which is independent proof
+that a vendor variant of each really does exist.
+
+**One extra wrinkle** (`extract-files.py`): the KeyMint blob NEEDs
+`libcppbor_external.so`, which is HyperOS's *second* build variant of
+`external/libcppbor` - stock ships both `libcppbor.so` and
+`libcppbor_external.so` in `/vendor/lib64` as genuinely different files with
+different SONAMEs. lineage-23.2's AOSP keymint service links plain `libcppbor`
+only, so that is the module this tree can actually install; added a
+`blob_fixup` `replace_needed("libcppbor_external.so", "libcppbor.so")` rather
+than gambling on a `libcppbor_external` module existing here. Same upstream
+`cppbor::` ABI either way.
+
+**Consistency check against every fact on record** - this explains all of
+them without needing any of the earlier theories:
+- **Recovery is healthy** - recovery never parses `/system/etc/init/hw/init.rc`
+  and never needs keystore2.
+- **The Round 54/55 GSI test booted** - that ran on **stock's** `/vendor`,
+  which has all of these libs. The first boot on this tree's own `vendor.img`
+  is precisely when they went missing.
+- **Permissive changed nothing** (Round 56) - a dynamic-linker failure is not
+  an SELinux denial.
+- **pstore always empty, no watchdog** (Round 57-60) - init sitting in
+  `wait_for_prop` is a clean epoll wait: not a kernel task in D-state, not a
+  spinning CPU. Round 62 already established `CONFIG_DETECT_HUNG_TASK` is
+  likely not even built; this confirms neither detector was ever going to
+  fire.
+- **Round 61's SPL pin is still correct and still wanted**, but it was
+  treating a *later* symptom of the same subsystem: with no KeyMint service
+  at all, rollback protection never even got a chance to be the problem.
+  Keep it - a KeyMint that now starts still must not report an SPL older
+  than the TA has latched.
+
+**Also hardened**: `tools/verify-build.sh` gained a boot-critical section
+that FAILs if any of these 14 libs is absent from `$OUT/vendor/lib64`, and
+that checks the `libcppbor_external` NEEDED was really repointed - so this
+class of bug (a `DISABLE_CHECKELF` blob whose deps nothing installs) cannot
+silently come back.
+
+**Still unconfirmed on hardware** - but unlike Rounds 56-62 this is not a
+probabilistic lead: the missing libraries are a verified fact about the
+built image, and the `wait_for_prop` that turns them into a silent hang is
+verbatim in the Android 16 `init.rc` this device boots.
+
 ### Round 62 - confirmed Round 60's hung_task_panic is very likely dead weight, via a real Android-16 GKI defconfig
 
 **Diagnostic-only, no tree behaviour change** (kept the cmdline args - see

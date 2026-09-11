@@ -195,6 +195,72 @@ $(call soong_config_set,mediatek_gadget,use_custom_usb_gadget_rc,true)
 # stock libpowerhal.so blob.
 
 # -----------------------------------------------------------------------------
+# KeyMint / Gatekeeper (Microtrust "mitee") - AOSP support libs for the blobs
+#
+# ROUND 63 - THIS IS WHAT KEPT NORMAL BOOT FROM EVER WORKING. Do not remove
+# any of these without re-reading README's Round 63.
+#
+# The two mitee HAL services are shipped as blobs:
+#   vendor/bin/hw/android.hardware.security.keymint@4.0-service.mitee
+#   vendor/bin/hw/android.hardware.gatekeeper-service.mitee
+# Both link a set of *AOSP* support libraries that stock installs into
+# /vendor/lib64 (verified: the vendor copies export
+# aidl::android::hardware::security::keymint::AndroidKeyMintDevice and
+# keymaster::*, with zero mitee/Microtrust symbols - they are the ordinary
+# vendor variants of AOSP modules, not Microtrust code that merely shares a
+# name).
+#
+# An earlier round correctly dropped those libs from proprietary-files.txt
+# (they collide with the AOSP source modules: "partition is different:
+# system(libkeymint_support) != vendor(prebuilt_libkeymint_support)") on the
+# reasoning that "the mitee keymint service blob links the source-built vendor
+# variants". That reasoning is right but it is only half the job: a
+# vendor_available library is merely *buildable* for vendor - soong installs
+# the vendor variant only when an installed vendor module depends on it. Both
+# HAL blobs carry ;DISABLE_CHECKELF, so soong sees no dependency at all and
+# installed none of them. Net effect: /vendor/lib64 shipped without
+# libkeymint.so, lib_android_keymaster_keymint_utils.so, the keymint/rkp/
+# sharedsecret/secureclock/gatekeeper -ndk libs, etc., so both HAL binaries
+# died at the dynamic linker and never registered.
+#
+# That is a total, silent boot stop, not a degraded boot: Android 16's own
+# /system/etc/init/hw/init.rc blocks in `on post-fs-data` on
+#     wait_for_prop keystore.module_hash.sent true
+# (added in A16 so KeyMint sees APEX module info before updatable code runs).
+# keystore2 can only set that once it has reached a KeyMint instance. With no
+# KeyMint, init waits forever - which is exactly the observed symptom set:
+# splash forever, no bootanimation, no adb (adbd starts in `on boot`, well
+# after post-fs-data), no kernel panic, no pstore trace, no watchdog reset,
+# and untouched by androidboot.selinux=permissive (it is a linker failure, not
+# a denial). It also explains why recovery is fine (never parses this rc) and
+# why the Round 54/55 GSI test booted (that ran on stock's /vendor, which has
+# all of these libs).
+#
+# .vendor suffix = install the vendor variant of a vendor_available module.
+# Names cross-checked against hardware/interfaces lineage-23.2:
+# android.hardware.security.keymint-service (vendor: true) lists libcppbor /
+# libkeymaster_portable / libkeymint / rkp-V3-ndk / sharedsecret-V1-ndk /
+# secureclock-V1-ndk in shared_libs; libkeymint_support and
+# libkeymint_remote_prov_support are in security/keymint/support/Android.bp;
+# keymint aidl_api is frozen through V4, rkp through V3, sharedsecret /
+# secureclock / gatekeeper at V1.
+PRODUCT_PACKAGES += \
+    android.hardware.security.keymint-V4-ndk.vendor \
+    android.hardware.security.rkp-V3-ndk.vendor \
+    android.hardware.security.sharedsecret-V1-ndk.vendor \
+    android.hardware.security.secureclock-V1-ndk.vendor \
+    android.hardware.gatekeeper-V1-ndk.vendor \
+    lib_android_keymaster_keymint_utils.vendor \
+    libcppbor.vendor \
+    libgatekeeper.vendor \
+    libkeymaster4support.vendor \
+    libkeymaster_messages.vendor \
+    libkeymaster_portable.vendor \
+    libkeymint.vendor \
+    libkeymint_remote_prov_support.vendor \
+    libkeymint_support.vendor
+
+# -----------------------------------------------------------------------------
 # Health
 # -----------------------------------------------------------------------------
 # The stock image ships hardware/interfaces' own AIDL reference health service
