@@ -363,6 +363,61 @@ actually blocked, or nothing at all) instead of trusting `console-ramoops`
 alone - clear pstore first (`adb shell rm -f /sys/fs/pstore/*`) so a stale
 record can't be mistaken for a fresh one again.
 
+### Round 71 - Round 70's hook sweep only covered `init.project.rc`; 8 more `modules.load`-loaded modules also register vendor hooks
+
+**Analysis round, no functional change - same "nothing worth dropping without
+evidence" conclusion, but the suspect list for a post-KeyMint stall was
+incomplete.** Round 70's `binder_gki`/`millet_sig` finding came from scanning
+`init.project.rc`'s explicit `insmod` lines. Redid the hook scan the other
+way - `nm` every one of the 199 `.ko` for `__tracepoint_android_(vh|rvh)_*`
+undefined symbols (the real symbol form; a bare `android_vh_*`/`android_rvh_*`
+grep finds nothing - confirmed empirically before getting this right), then
+cross-checked each hit against `modules.load` to see what's actually loaded,
+not just present in the directory.
+
+**Result: 8 more actively-loaded modules register vendor hooks that neither
+Round 58 nor Round 70 named** (all confirmed present in the real built
+`vendor_dlkm/lib/modules/modules.load`, i.e. `modprobe -a`'d on every boot
+right now, same mechanism metis was):
+
+```
+binder_prio.ko        -> binder_set_priority, binder_trans, binder_proc_transaction_finish
+cpudvfs.ko             -> freq_qos_add/remove/update_request
+cpuqos_v3.ko           -> cgroup_attach, is_fpsimd_save
+iorap2.ko              -> filemap_read, filemap_map_pages, mmput
+kshrink_slabd.ko       -> shrink_slab_bypass
+mi_rmap_efficiency.ko  -> page_referenced_check_bypass, page_should_be_protected
+mi_unfairmem.ko        -> get_page_wmark, shrink_slab_bypass
+perf_helper.ko         -> tune_scan_type
+scene_swappiness.ko    -> tune_swappiness
+```
+
+(`met.ko` also hooks two tracepoints, `show_resume_epoch_val`/
+`show_suspend_epoch_val`, but confirmed genuinely unloaded - not in
+`modules.load`, not `insmod`'d anywhere - consistent with Round 70's
+"met* family is dead weight" call for that one specifically.)
+
+**The one worth flagging by name: `binder_prio.ko`.** It hooks
+`binder_set_priority`/`binder_trans` - the *exact same* two tracepoints
+Round 70's `binder_gki` hooks, and also the same ones `task_turbo.ko` and
+`vip_engine.ko` (both already Round-58-blocked) independently hook via
+`binder_restore_priority`/`binder_set_priority`. Four separate Xiaomi/MTK
+modules - two blocked, two still active - all reaching into the same
+binder-priority-boost mechanism. Dense and overlapping, and `binder_prio` is
+loaded via the standard `modules.load` path (not `init.project.rc`), so it
+was outside Round 70's scan entirely.
+
+**Still nothing worth dropping now** - same reasoning as Round 70, and this
+workspace's own standing rule (don't strip modules ahead of evidence): none
+of these 8 have a confirmed crash, unlike metis, and blast-radius-blocking
+them on suspicion alone risks losing real functionality (CPU DVFS, IORap
+readahead, memory reclaim tuning) for a hypothetical. Recorded as an
+expanded suspect list for **after** a boot that clears Round 63's KeyMint
+stop: if it then stalls again in a binder-dense phase (zygote/
+`system_server` startup), `binder_prio` is now on the list alongside Round
+70's `binder_gki`/`millet_sig` - check `dmesg`/pstore for any of these names
+before assuming it's a new, unrelated bug.
+
 ### Round 70 - module sweep for HyperOS-only / dead weight: one suspect worth naming, nothing worth dropping yet
 
 **Analysis round, no functional change.** Question: are there further modules
