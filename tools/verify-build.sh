@@ -439,6 +439,12 @@ if [ -s "$bp" ]; then
 else fail "vendor/build.prop missing"; fi
 sp="$OUT/system/build.prop"
 [ -s "$sp" ] && { grep -q '^ro.build.version.sdk=36' "$sp" && pass "SDK 36" || warn "SDK: $(grep '^ro.build.version.sdk=' "$sp")"; }
+# Round 61: PLATFORM_SECURITY_PATCH must be >= the highest SPL this physical
+# unit's mitee KeyMint TA has ever genuinely latched (stock's own 2026-08-01),
+# or pre-existing keys (most relevantly /data's own FBE key material) get
+# permanently rejected with KEY_REQUIRES_UPGRADE - a silent, non-crashing hang.
+[ -s "$sp" ] && { grep -q '^ro.build.version.security_patch=2026-08-01' "$sp" && pass "system SPL 2026-08-01 (Round 61 KeyMint rollback fix)" \
+  || fail "system SPL: $(grep '^ro.build.version.security_patch=' "$sp") - must be >= 2026-08-01 (Round 61)"; }
 for pf in vendor odm; do
   n=$(grep -rc '^ro.build.version.sdk_full=\|^ro.'"$pf"'.build.version.sdk_full=' "$OUT/$pf/build.prop" 2>/dev/null || echo 0)
 done

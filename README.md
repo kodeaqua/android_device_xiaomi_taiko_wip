@@ -362,6 +362,118 @@ actually blocked, or nothing at all) instead of trusting `console-ramoops`
 alone - clear pstore first (`adb shell rm -f /sys/fs/pstore/*`) so a stale
 record can't be mistaken for a fresh one again.
 
+### Round 61 - static audit + external research (no device access this round): mitee KeyMint rollback protection, a VINTF theory chased and ruled out
+
+**Fix applied, not yet reflashed/confirmed** - this round was done without a
+capture from the device (user asked for a best-effort static audit instead of
+another debug/pstore round). Re-audited the tree against the workspace's own
+reference repos plus the sibling `kodeaqua/android_device_xiaomi_taiko-twrp`
+tree (same stock dump, same mitee TA, verified booting on real taiko
+hardware) and upstream AOSP source, looking for anything that reproduces
+Round 60's exact symptom set (normal boot hangs at the splash forever; zero
+adb; zero pstore trace even with the Round 60 `hung_task_panic`/
+`softlockup_panic` diagnostic in place; recovery boots fine on the identical
+kernel/PLATFORM-fragment/dtbo).
+
+**Theory 1 (chased, then ruled out): VINTF manifest version 9.0 unparseable.**
+The TWRP tree's own README documents an almost too-perfect match: stock's
+PLATFORM (`type 0x1`) fragment - the exact same one this tree uses verbatim
+for normal boot (Round 54) - ships two files at
+`/system/etc/vintf/manifest/` (`android.hardware.health-service.example.xml`,
+`android.hardware.boot-service.mtk.xml`), both `<manifest version="9.0"
+type="device">`. Confirmed byte-identical in this tree's own
+`prebuilt/vendor_ramdisk.cpio.lz4` (extracted and diffed directly - same two
+files, same paths, same `version="9.0"` content). `/system/etc/vintf/
+manifest/` is scanned as the **framework** manifest set regardless of a
+fragment's own `type` attribute, so on TWRP's AOSP-13 base (`libvintf@4.0`,
+whose `kMetaVersion` ceiling is nowhere near 9.0) every
+`getFrameworkHalManifest()` call failed with `-22 Unrecognized
+manifest.version 9.0`, poisoning `keystore2`/`servicemanager` system-wide -
+a clean, silent, non-crashing failure that would explain this device's
+symptom exactly (normal boot needs keystore2 for FBE; recovery doesn't).
+
+**Ruled out by checking the actual version ceiling this tree's AOSP vintage
+has**, not assuming TWRP's finding transfers: `system/libvintf`'s
+`kMetaVersion` (`parse_xml.cpp`: `if (param.metaVersion > kMetaVersion)
+*param.error = "Unrecognized manifest.version " + ... ` - the exact message
+format TWRP's captured log shows) is `{8, 0}` at tag `android-15.0.0_r1` and
+`{9, 0}` at tag `android-16.0.0_r1` (both checked directly against
+`android.googlesource.com/platform/system/libvintf`). This tree targets
+**Android 16** (same as stock) - the version bump to exactly 9.0 happened
+*for* Android 16, not after it. This tree's own `android_hardware_interfaces`
+reference checkout (`lineage-23.2`, dated 2026-05-12 - solidly Android-16-era)
+is consistent with already having `kMetaVersion == 9.0`, i.e. `9.0 > 9.0` is
+false and the parse should succeed here, unlike on TWRP's AOSP-13 base. (The
+"typed `device` sitting in the framework scan dir" half of TWRP's finding is
+a real structural oddity either way, but nothing found in `HalManifest.cpp`/
+`parse_xml.cpp` enforces `type` against the scan directory - no rejection
+mechanism there for a same-vintage parser.) Not applying TWRP's manifest
+override fix based on this - it would be inert at best, and splicing cpio
+entries has its own real cost (Round 59) not worth paying for a ruled-out
+theory. Noted here so a future round doesn't re-chase it without re-reading
+this.
+
+**Theory 2 (applied): mitee KeyMint OS-version/patch-level rollback
+protection.** TWRP's own README documents a *second*, independent bug on
+this same device/TEE after fixing the VINTF issue: reading `/data` keys
+created by a real Android 16 system while TWRP itself reported an older
+platform version failed with `KEY_REQUIRES_UPGRADE` (-62) then
+`INVALID_ARGUMENT` (-38) - `source.android.com/docs/security/features/
+keystore/version-binding` confirms this is standard, spec-required KeyMint
+behavior (AOSP CDD 9.10): any key whose stored OS-version/patch-level tag is
+**higher** than what the current boot reports is permanently rejected until
+the device reports a patch level at or above that key's again - a per-key
+check, clean AIDL error, no crash, no kernel trace.
+
+This tree has never overridden `PLATFORM_SECURITY_PATCH` - it was silently
+inheriting whatever LineageOS 23.2's own `build/make/core/version_defaults.mk`
+default is for this source drop (unverified exact value, but the
+`android_hardware_interfaces` reference checkout puts this branch's vintage
+around 2026-05, so almost certainly an SPL string from around then). This
+physical unit shipped and genuinely ran stock HyperOS at **system SPL
+2026-08-01** (`dump-ota/system/system/build.prop`, matches this workspace's
+own "Hard facts") before any of this bring-up work started - real prior use
+of the exact same mitee TA almost certainly already latched that value as
+the highest patch level it's ever seen. Flashing a system reporting an
+*older* SPL than that trips exactly the rollback check above, for any
+pre-existing key the TA already stamped at 2026-08-01 - most relevantly
+`/data`'s own FBE key material, whose blobs live in
+`/metadata/vold/metadata_encryption` (`rootdir/etc/fstab.mt6789`'s own
+`keydirectory=` flag) - a location an ordinary recovery "wipe data" does
+**not** necessarily format, so this can bite even after the documented
+factory-reset step in the flash recipe.
+
+**Fix**: pinned `PLATFORM_SECURITY_PATCH := 2026-08-01` in `device.mk` -
+the real, dumped value, not an arbitrary-future guess (TWRP's own fix for the
+same bug class used `PLATFORM_VERSION{,_LAST_STABLE} := 99` /
+`BOOT_PATCHLEVEL := 2099` because it had no reliable reference SPL to match;
+this tree does, from the dump, so use it exactly per this workspace's own
+"take from the dump, don't guess" rule). This also feeds
+`BOARD_AVB_*_ROLLBACK_INDEX` (`BoardConfig.mk`, via
+`PLATFORM_SECURITY_PATCH_TIMESTAMP`) consistently, though AVB itself doesn't
+currently need it (`--disable-verification` - Round 58) - KeyMint's rollback
+counter is a separate mechanism that flag does not touch.
+
+**Not a substitute for**: actually formatting `/metadata` on the next flash
+(`fastboot erase metadata`, not just a recovery "wipe data") - belt-and-
+suspenders, since a genuinely fresh `/metadata` has no pre-existing key to
+conflict with regardless of what SPL this tree reports. Do both.
+
+**Also checked and still believed correct** (re-audited, no changes needed):
+`BOARD_SUPER_PARTITION_SIZE`/groups math, the PLATFORM-fragment/RECOVERY
+vendor_boot split (Round 54), the `metis`/`mi_schedule` blocklists on both
+copies (Round 58/59), `fstab.mt6789`'s `first_stage_mount` entry set against
+stock's own (Round 60 already diffed this fully), and the top-level `init.rc`
+(stock AOSP boilerplate, no device branching).
+
+**Still not confirmed on real hardware** - next flash should tell us fairly
+unambiguously: if this was the real blocker, normal boot should now get past
+wherever it was stalling; if the hang is unrelated to KeyMint/`/data` at all,
+this changes nothing observable (safe either way - a higher, real,
+dump-sourced SPL has no downside for a test-key-signed bring-up build). If it
+still hangs, Round 60's forced `hung_task_panic`/`softlockup_panic` diagnostic
+is still in place and should now be the next capture worth pulling.
+
 ### Round 60 - normal boot still silently hangs after Round 59; forced hung-task/softlockup panic + a bisection plan
 
 **Diagnostic added, not yet reflashed/confirmed.** Every fresh normal-boot

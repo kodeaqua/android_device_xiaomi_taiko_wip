@@ -12,21 +12,27 @@ hardware facts) is in the parent `../../../CLAUDE.md`. This file is about
 `device/mediatek/sepolicy_vndr` on `lineage-23.2`. The yunluo tree this was
 seeded from is `lineage-23.0` — see "LineageOS 23.2 deltas" below.
 
-**State (2026-09-09):** pushed to `kodeaqua/android_device_xiaomi_taiko_wip`
-`lineage-23.2`. Passed soong bootstrap + kati + the full ninja compile after 35
-fix rounds (each logged in `README.md` → "AOSP-core audit"); now at OTA
-packaging — Round 35 fixed the `checkvintf --check-compat` failure. Build runs on a
-*different* machine; this repo has no Android tree — see parent `CLAUDE.md`
-"Build status" for the workflow, the fix-class cheat sheet, and which reference
-repos to check. Camera is **enabled**. `configs/audio|media|wifi` are taiko's own
-now. `BOARD_SUPER_PARTITION_SIZE` is real (11 GiB from the scatter).
+**State (2026-09-11):** pushed to `kodeaqua/android_device_xiaomi_taiko_wip`
+`lineage-23.2`. `brunch taiko` completes cleanly (since Round 51) — all work
+since is **real-hardware flash debugging** (Rounds 52-61, full detail in
+`README.md`). Recovery boots (Round 54/55, `adb` reachable); **normal system
+boot has never yet succeeded** — silent hang at the splash, no crash/pstore
+trace even with a forced `hung_task_panic`/`softlockup_panic` diagnostic
+(Round 60). Round 61 (static audit, no device access) pinned
+`PLATFORM_SECURITY_PATCH := 2026-08-01` in `device.mk` — this tree never
+overrode it before, which likely tripped mitee KeyMint's per-key rollback
+protection against pre-existing keys the TA already stamped at stock's real
+SPL — **not yet confirmed on real hardware**. See parent `CLAUDE.md` "Build
+status" and this repo's `README.md` Round 61 for the full chain of reasoning.
+Camera is **enabled**. `configs/audio|media|wifi` are taiko's own now.
+`BOARD_SUPER_PARTITION_SIZE` is real (11 GiB from the scatter).
 
 ## File responsibilities
 
 | File | Owns |
 |---|---|
 | `BoardConfig.mk` | partitions, filesystem types, AVB, boot/vendor_boot layout, kernel-module wiring, SELinux/Wi-Fi board flags |
-| `device.mk` | `PRODUCT_PACKAGES` / `PRODUCT_COPY_FILES` — **blob-first**, only non-blob HALs + Lineage extras |
+| `device.mk` | `PRODUCT_PACKAGES` / `PRODUCT_COPY_FILES` — **blob-first**, only non-blob HALs + Lineage extras. Also owns `PLATFORM_SECURITY_PATCH` (Round 61 — must stay >= stock's real system SPL or mitee KeyMint's rollback protection rejects pre-existing keys) |
 | `lineage_taiko.mk` | product identity, `inherit-product` chain (`core_64_bit_only` + `full_base` + `common_full_tablet_wifionly`) |
 | `AndroidProducts.mk` | lunch combos |
 | `extract-files.py` / `setup-makefiles.py` | blob extractor; `blob_fixups` map is tuned against `check_elf` output |

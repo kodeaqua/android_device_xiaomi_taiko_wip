@@ -357,7 +357,11 @@ BOARD_AVB_VENDOR_BOOT_ROLLBACK_INDEX_LOCATION := 4
 # vendor_boot ramdisk fragment, covered by vendor_boot's AVB descriptor).
 
 # -----------------------------------------------------------------------------
-# Security patch level (vendor image) - from stock vendor/build.prop
+# Security patch level (vendor image) - from stock vendor/build.prop.
+# PLATFORM_SECURITY_PATCH (the *system*-partition SPL that also feeds every
+# BOARD_AVB_*_ROLLBACK_INDEX above via PLATFORM_SECURITY_PATCH_TIMESTAMP, AND
+# separately gates mitee KeyMint's own per-key rollback protection - see
+# Round 61) is pinned in device.mk, not here - it's a PRODUCT-level var.
 # -----------------------------------------------------------------------------
 VENDOR_SECURITY_PATCH := 2026-06-05
 BOOT_SECURITY_PATCH := 2026-08-01
