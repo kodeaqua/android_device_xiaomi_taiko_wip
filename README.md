@@ -363,6 +363,71 @@ actually blocked, or nothing at all) instead of trusting `console-ramoops`
 alone - clear pstore first (`adb shell rm -f /sys/fs/pstore/*`) so a stale
 record can't be mistaken for a fresh one again.
 
+### Round 73 - MediaTek/Xiaomi kernel source repos: mt6789 code really is there, but it is not a path to rebuilding taiko's modules
+
+**Research round, no tree change.** Round 62 concluded that
+`MiCode/Xiaomi_Kernel_OpenSource` `yili-w-oss` is generic GKI with no
+MediaTek content, and guessed the vendor drivers live in a separate
+`MTK_kernel_modules`-style repo. That guess was right - the repos exist, and
+checking them properly corrects part of Round 62 as well:
+
+```
+MiCode/MTK_kernel_device_modules  @ yili-w-oss    MTK platform drivers + DTS
+MiCode/MTK_kernel_modules         @ yili-w-oss    Xiaomi/MTK module customisations
+MiCode/mtkcam-kernel_device_modules @ flare-w-oss camera slice
+MiCode/kernel_build               @ yili-w-oss    kleaf/bazel build system
+```
+
+**mt6789 code is genuinely present** (the point raised against Round 62's
+"zero MediaTek content" finding - that finding was about
+`Xiaomi_Kernel_OpenSource` specifically, and stands for that repo, but these
+are different repos):
+`arch/arm64/boot/dts/mediatek/` in `MTK_kernel_device_modules` carries
+`cust_mt6789_camera.dtsi`, `cust_mt6789_camera_v4l2.dtsi`,
+`cust_mt6789_msdc.dtsi` and five `cust_mt6789_touch_*.dtsi`, alongside DTS
+for ~20 other SoCs (6761, 6765, 6768, 6781, 6785, **6789**, 6833, 6853,
+6855, 6858, 6877, 6881, k6886/6897/6899/6985/6989/6991/6993). And
+`fake_manifest.xml` declares the project as **`kernel-6.12`** - the same
+kernel generation as this device's `android16-6.12`.
+
+**But it is partial, and the branch is someone else's.** `yili` is the Redmi
+K Pad 2 (Dimensity 9500, k6897-class); mt6789 files ride along only because
+MediaTek ships one multi-platform repo per kernel generation. Spot-checking a
+subsystem: `drivers/misc/mediatek/cpufreq_v2/src/` has platform directories
+`plat_k6761 / k6765 / k6781 / k68 / k6833 / k6853 / k6877 / k6893` - **no
+mt6789**. The mt6789 files that are present are `cust_*` board-level DTS
+includes, which is not the same as the platform building end to end.
+
+**No `taiko` branch exists** in `MTK_kernel_device_modules` or in
+`Xiaomi_Kernel_OpenSource` (checked both). Xiaomi has not published this
+device's own kernel source, so CLAUDE.md's "no public source" stays accurate.
+
+**`metis`/`mi_schedule` source is not in there either**, which closes the
+Round 69 hope of reading the `lowlt_list_del_task` NULL deref. The
+`*_cus` directories are MediaTek's customisation *hooks*, and even those ship
+substantially as pre-compiled objects rather than source -
+`task_turbo_cus/src` is 4 text files against 12 `.o` + `.cmd_shipped`
+binaries, `game_cus/src` is 1 `.c` against 6. Nothing named metis, mi_schedule
+or lowlt anywhere in `sched_cus`, `game_cus` or `task_turbo_cus`.
+
+**On "some of these are submodules"** - right in spirit, different mechanism.
+There is no `.gitmodules`; the repos are stitched together by a `repo`
+manifest (`fake_manifest.xml`). Worth noting the camera repo is on branch
+**`flare`**-w-oss while the rest are **`yili`**-w-oss - these are per-release
+snapshots of different devices assembled into one tree, not one coherent
+source drop.
+
+**Verdict: useful as reference, not as a way to replace `prebuilt/`'s `.ko`.**
+Beyond the incomplete mt6789 coverage, the blocker is KMI: every module here
+would have to be built against taiko's exact GKI build
+(`6.12.30-android16-5-g6e872b4863d6-ab13847919-4k`) using that build's
+`Module.symvers`, and that artifact ships in a kernel release, not in an OTA
+payload. Without it the symbol CRCs will not match and the modules are
+rejected at load - the same wall Round 60 hit when it rejected swapping to
+Google's upstream GKI. Re-check if Xiaomi ever publishes `taiko` or another
+MT6789 Android-16 device branch; until then the prebuilt, KMI-locked modules
+carved from this device's own dump remain the only correct source.
+
 ### Round 72 - full sweep of the areas Rounds 63-71 never touched: no new boot blockers
 
 **No functional change - a coverage round.** Rounds 63-71 all orbited kernel
