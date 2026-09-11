@@ -1565,6 +1565,14 @@ vendor/lib64/libmcve.so;DISABLE_CHECKELF
 vendor/lib64/libmfido_mitee.so;DISABLE_CHECKELF
 vendor/lib64/libmialgo_ai_vision.so;DISABLE_CHECKELF
 vendor/lib64/libmialgo_utils.so;DISABLE_CHECKELF
+# Round 67: the NDK STL the three libmialgo_* above are linked against. The
+# lib_fixups libc++_shared->libc++ mapping in extract-files.py only satisfies
+# check_elf at BUILD time; at runtime the linker looks up the literal SONAME
+# libc++_shared.so, so the file itself has to ship or every libmialgo_* fails
+# to dlopen. It is in the dump (vendor/lib64/libc++_shared.so) - Round 66
+# looked for it in vendor/xiaomi/taiko/proprietary/, which by construction
+# only holds what this file already lists, so its absence there proved nothing.
+vendor/lib64/libc++_shared.so;DISABLE_CHECKELF
 vendor/lib64/libmialgoengine.so;DISABLE_CHECKELF
 vendor/lib64/libmialgoengine2.so;DISABLE_CHECKELF
 vendor/lib64/libmiface.so;DISABLE_CHECKELF

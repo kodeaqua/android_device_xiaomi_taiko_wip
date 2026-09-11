@@ -620,7 +620,15 @@ else
   while IFS= read -r rel; do
     f="$OUT/$rel"; [ -f "$f" ] || continue
     head -c4 "$f" 2>/dev/null | grep -q ELF || continue
-    case "$rel" in */lib/*) bits=32 ;; *) bits=64 ;; esac
+    # Round 67: read the bitness out of the ELF header, never off the path.
+    # vendor/bin/ holds both 32- and 64-bit executables (volte_rcs_ua is
+    # 32-bit), so the old */lib/* path heuristic silently searched lib64 for a
+    # 32-bit binary's deps and invented FAILs for libs that were present all
+    # along, just in vendor/lib.
+    case "$("$RE" -h "$f" 2>/dev/null | awk '/Class:/{print $2}')" in
+      ELF32) bits=32 ;; ELF64) bits=64 ;;
+      *) case "$rel" in */lib/*) bits=32 ;; *) bits=64 ;; esac ;;
+    esac
     nblob=$((nblob+1))
     while IFS= read -r so; do
       [ -n "$so" ] || continue
