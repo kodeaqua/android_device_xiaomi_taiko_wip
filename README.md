@@ -363,6 +363,55 @@ actually blocked, or nothing at all) instead of trusting `console-ramoops`
 alone - clear pstore first (`adb shell rm -f /sys/fs/pstore/*`) so a stale
 record can't be mistaken for a fresh one again.
 
+### Round 75 - is the rc set bloated? No: 12 of the 22 files are never parsed on a normal boot
+
+**Question answered, no tree change.** This tree ships 22 rc files where both
+sibling trees ship 8 (Round 74), which looks like bloat. It isn't, and the
+reason is worth recording so a later round doesn't "clean it up".
+
+**Size is not the argument either way.** All 22 rc files total **224 KB**, of
+which the factory/META set is 84 KB (`factory_init.*` 48 KB, `meta_init.*`
+36 KB). Against a vendor image measured in hundreds of MB this is noise.
+
+**The real point: 12 of the 22 are mode-gated and never parsed on a normal
+boot.** Traced the import graph rather than assuming:
+- Nothing anywhere imports `factory_init.*` or `meta_init.*`. They are
+  **standalone top-level init scripts**, selected by the bootloader when it
+  boots into factory or META mode, not reachable from
+  `init.${ro.hardware}.rc`.
+- `multi_init.rc` - whose own header says *"import AOSP service related rc in
+  meta mode and factory mode"* - is imported **only** by `factory_init.rc`
+  and `meta_init.rc`, confirming the whole cluster hangs off those two roots
+  and nothing else.
+
+So on a normal boot the live set is ~10 files: `init.mt6789.rc` →
+`init.project.rc` → `init.mtkgki.rc`, `init.connectivity.rc` →
+(`init_connectivity.rc` + `init.connectivity.common.rc`),
+`init.mt6789.usb.rc`, `init.sensor_2_0.rc`, `init.cgroup.rc`, `init.aee.rc`.
+Their runtime cost is what it would be with the other 12 deleted. This also
+retroactively explains Round 72's 12 duplicate service names: every one is a
+collision between a factory/META file and a normal-boot file, and the two
+sets are never parsed together, so no duplicate is ever real.
+
+**Two confusingly-named files are both legitimate**: `init.connectivity.rc`
+is a 4-line dispatcher that imports `init_connectivity.rc` (underscore) and
+`init.connectivity.common.rc`. All three exist in taiko's stock and all three
+are packaged. Nothing dead, nothing duplicated - the naming is stock MTK's
+own.
+
+**And there is a cost to trimming**: deleting the factory/META set removes
+MediaTek's factory and META boot modes, which are a real diagnostic and
+recovery path on this platform - not something to give up on a device that
+has not yet completed a normal boot. It would also mean diverging from stock
+to buy 84 KB, while adding a fresh variable to a build whose boot is still
+unverified.
+
+**Verdict: keep all 22.** If image weight is the actual concern, the real
+(and still minor) candidates are in `prebuilt/`, not here - Round 70 measured
+them: the `met*` tracing family ~1.5 MB, `gt9886`/`gt9896s` ~430 KB, both
+shipped-but-never-loaded, and both only worth touching folded into some
+future re-extract.
+
 ### Round 74 - rc layer compared against the other two taiko/MT6789 trees: no gaps, and one thing worth knowing about the sibling taiko tree
 
 **Comparison round, no tree change.** Diffed this tree's `rootdir/etc`
