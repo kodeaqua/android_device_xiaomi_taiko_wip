@@ -363,6 +363,59 @@ actually blocked, or nothing at all) instead of trusting `console-ramoops`
 alone - clear pstore first (`adb shell rm -f /sys/fs/pstore/*`) so a stale
 record can't be mistaken for a fresh one again.
 
+### Round 74 - rc layer compared against the other two taiko/MT6789 trees: no gaps, and one thing worth knowing about the sibling taiko tree
+
+**Comparison round, no tree change.** Diffed this tree's `rootdir/etc`
+against `MySelly/android_device_xiaomi_taiko` (`lineage-23.0` - **the same
+device**, different maintainer) and
+`xiaomi-mt6789-devs/android_device_xiaomi_yunluo` (`lineage-23.0` - the
+Redmi Pad 1 seed, and the only one of the three confirmed booting).
+
+**The headline: `MySelly`'s taiko tree cannot validate our rc, because its rc
+is not taiko's.** Its `init.mt6789.rc` is **598 lines and byte-identical to
+yunluo's**; taiko's own stock file, which this tree ships, is **1302 lines**.
+Its file list matches yunluo's exactly, down to carrying
+`init.mi_thermald.rc` and `init.mt6789.power.rc` - two rc files that **do not
+exist anywhere in taiko's stock firmware** (checked the whole dump). That
+tree was seeded from yunluo and its rc layer was never refreshed from taiko's
+own dump. Nothing wrong with it as a starting point - this tree started from
+the same seed - but it means ~704 lines of taiko/MT6789-specific init logic
+are simply absent there, and it is not an independent reference for "is our
+rc right". Recorded so a later round doesn't try to reconcile ours *down* to
+theirs.
+
+**Checked whether yunluo carries LineageOS adaptations we should port: it
+does not.** No `lineage`/`removed`/`disabled`/SPDX modification markers
+anywhere in its rc - it ships its own stock rc verbatim, exactly as this tree
+ships taiko's. There is no adapted-for-AOSP rc layer to inherit from either
+sibling.
+
+**Corroboration for Round 72**: yunluo, which *boots*, still has
+`wait_for_prop vendor.all.modules.ready 1` in `init.mt6789.rc` (line 81).
+That construct plus its `init.insmod.sh` setter is therefore proven fine on a
+booting LineageOS MT6789 device, which is what Round 72 concluded from
+static analysis alone.
+
+**Only two services yunluo has that this tree does not**, and both are
+correctly absent: `vendor.gralloc-4-0` and `vendor.hwcomposer-2-3` are the
+**HIDL-era** graphics services. taiko is Android 16 / AIDL, where the
+equivalents are `vendor.gralloc-v2`
+(`android.hardware.graphics.allocator-V2-service-mediatek`) and
+`android.hardware.graphics.composer@3.4-service`, both of which this tree
+ships. (Pleasing consistency check on Round 68: yunluo's booting equivalent
+of the very service whose binary Round 68 found missing from the exec path is
+its HIDL ancestor.) No `on` trigger exists in yunluo's rc that this tree
+lacks.
+
+**One apparent gap that is not one**: both sibling trees ship
+`rootdir/etc/ueventd.mt6789.rc`, which this tree does not. taiko's stock uses
+the modern path instead - `vendor/etc/ueventd.rc` - and that **is** shipped
+(`proprietary-files.txt:1200`). Different naming era, same content role.
+
+**Net: no changes needed to the rc layer.** Every difference against both
+sibling trees resolves to either "taiko's stock genuinely differs from
+yunluo's" or "taiko is Android 16 and they are Android 15".
+
 ### Round 73 - MediaTek/Xiaomi kernel source repos: mt6789 code really is there, but it is not a path to rebuilding taiko's modules
 
 **Research round, no tree change.** Round 62 concluded that
