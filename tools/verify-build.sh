@@ -205,6 +205,14 @@ for b in lib lib64; do
   loadpath "vendor/$b/hw/android.hardware.graphics.allocator-V2-mediatek.so" WARN   # allocator impl
 done
 loadpath "vendor/lib64/hw/android.hardware.camera.provider@2.6-impl-mediatek.so" WARN
+# Round 68: service BINARIES behind the same mt6789/ symlink scheme. init execs
+# these exact paths (see the rc files named below); if the link is missing or
+# dangling the service silently never starts. The allocator is the AIDL gralloc
+# IAllocator every buffer allocation goes through - declared in the device VINTF
+# manifest, so its absence makes clients wait for a service that cannot register.
+loadpath "vendor/bin/hw/android.hardware.graphics.allocator-V2-service-mediatek" FAIL  # vendor.gralloc-v2
+loadpath "vendor/bin/hw/camerahalserver"                                         FAIL  # camerahalserver.rc
+loadpath "vendor/bin/v3avpud-64b"                                                WARN  # camera 3A VPU daemon
 ec="$OUT/vendor/lib64/egl/egl.cfg"; [ -f "$ec" ] || ec="$OUT/vendor/lib/egl/egl.cfg"
 [ -f "$ec" ] && { pass "egl.cfg present"; grep -v '^#' "$ec" | sed 's/^/      /'; } || info "  no egl/egl.cfg (loader auto-probes libGLES_mali)"
 

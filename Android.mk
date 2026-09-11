@@ -304,8 +304,17 @@ MTK_SOC_SYMLINKS := \
 # hw/android.hardware.graphics.allocator-V2-mediatek.so are the gralloc mapper/
 # allocator impls SurfaceFlinger needs. These 19 stock symlinks were missing
 # from the first list (it only picked up the flat vendor/lib{,64}/*.so links);
-# the audio.primary/r_submix/sensors.mt6789 legacy-HIDL links are deliberately
-# NOT added - taiko is AIDL audio + sensors, those blobs aren't shipped.
+# the audio.primary/r_submix legacy-HIDL links are deliberately NOT added -
+# taiko is AIDL audio, those blobs aren't shipped.
+#
+# lib64/hw/sensors.mt6789.so is also deliberately skipped, but note the reason
+# stated here originally was wrong: its target (lib64/hw/sensors.mediatek.
+# V2.0.so) IS shipped. The real reason it is unnecessary is that nothing loads
+# it - sensors.<platform>.so is the legacy libhardware hw_get_module("sensors")
+# name, and this tree runs the AOSP AIDL multi-HAL, which loads only what
+# configs/.../hals.conf lists (android.hardware.sensors@2.X-subhal-mediatek.so
+# + sensors.camera.light.so). Add it only if a sensors HAL ever logs a lookup
+# for sensors.mt6789.so.
 
 $(MTK_SOC_SYMLINKS):
 	@echo "Symlink: $@ -> $(TARGET_BOARD_PLATFORM)/$(notdir $@)"
@@ -313,5 +322,37 @@ $(MTK_SOC_SYMLINKS):
 	$(hide) ln -sf $(TARGET_BOARD_PLATFORM)/$(notdir $@) $@
 
 ALL_DEFAULT_INSTALLED_MODULES += $(MTK_SOC_SYMLINKS)
+
+# ---------------------------------------------------------------------------
+# Round 68: two stock symlinks the generic rule above CANNOT express. Their
+# target keeps the .mt6789 suffix while the link name - the path init actually
+# execs - does not, so $(TARGET_BOARD_PLATFORM)/$(notdir $@) would emit a
+# DANGLING link. Stock ships two aliases for each of these binaries:
+#     bin/hw/<name>          -> bin/hw/mt6789/<name>.mt6789   <- init execs this
+#     bin/hw/<name>.mt6789   -> bin/hw/mt6789/<name>.mt6789
+# Only the second form fits the generic rule, and only the second form was
+# listed - so the path init actually uses did not exist in the image at all.
+#
+# Both are service binaries started by rc files this tree ships:
+#   vendor/etc/init/android.hardware.graphics.allocator-V2-service-mediatek.rc
+#       service vendor.gralloc-v2 /vendor/bin/hw/android.hardware.graphics.allocator-V2-service-mediatek
+#   vendor/etc/init/v3avpud-64b.rc
+#       service v3avpud-64b /vendor/bin/v3avpud-64b -f
+#
+# The allocator one is the serious half: it is the AIDL gralloc IAllocator
+# that every graphics buffer allocation goes through (SurfaceFlinger, camera,
+# codecs). It is declared in the device VINTF manifest, so clients wait for a
+# service that can never register because its binary is not at the path init
+# tries to exec. v3avpud-64b is the camera 3A VPU daemon - camera-only.
+MTK_SOC_SYMLINKS_SUFFIXED := \
+    $(TARGET_OUT_VENDOR)/bin/hw/android.hardware.graphics.allocator-V2-service-mediatek \
+    $(TARGET_OUT_VENDOR)/bin/v3avpud-64b
+
+$(MTK_SOC_SYMLINKS_SUFFIXED):
+	@echo "Symlink: $@ -> $(TARGET_BOARD_PLATFORM)/$(notdir $@).mt6789"
+	@mkdir -p $(dir $@)
+	$(hide) ln -sf $(TARGET_BOARD_PLATFORM)/$(notdir $@).mt6789 $@
+
+ALL_DEFAULT_INSTALLED_MODULES += $(MTK_SOC_SYMLINKS_SUFFIXED)
 
 endif

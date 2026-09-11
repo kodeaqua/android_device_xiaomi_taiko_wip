@@ -362,6 +362,83 @@ actually blocked, or nothing at all) instead of trusting `console-ramoops`
 alone - clear pstore first (`adb shell rm -f /sys/fs/pstore/*`) so a stale
 record can't be mistaken for a fresh one again.
 
+### Round 68 - fresh audit: the gralloc allocator service binary isn't at the path init execs (likely the next blocker)
+
+**Fix applied, not yet reflashed/confirmed.** Independent re-audit of the
+tree from angles Rounds 63-67 never used, looking specifically for anything
+that can hang or crash-loop rather than merely degrade.
+
+**Checks that came back clean** (recorded so they aren't redone):
+- **VINTF vs providers** - all 33 shipped `vendor/etc/vintf/manifest/*.xml`
+  fragments have the binary that implements them in the build. No HAL is
+  declared-but-unimplemented (which would make every client's
+  `waitForService()` block).
+- **`wait_for_prop` across every rc this build actually parses** (113 files:
+  shipped blob rc + `rootdir/`) - exactly one, `vendor.all.modules.ready`,
+  and its setter (`init.insmod.sh` via `init.insmod.mt6789.cfg`) ships. After
+  Round 63 that was the obvious thing to re-check exhaustively; there is no
+  second untimed blocker hiding in vendor rc.
+- **Services whose `/vendor` binary is missing** - five hits
+  (`gnss_daemon`, `mnld`, `permission_check`, `spm_loader`,
+  `thermal_manager`), all false alarms: those binaries do not exist in the
+  stock dump either (MTK rc templates cover several SKUs), and all but the
+  GPS pair live in `factory_init.rc`/`meta_init.rc`, which normal boot never
+  runs.
+
+**The real finding.** Three more hits in that same scan were genuine, and
+they share one cause. Stock ships MTK SoC binaries as
+`<dir>/mt6789/<name>.mt6789` with **two** symlink aliases:
+
+```
+bin/hw/<name>          -> bin/hw/mt6789/<name>.mt6789      <- the path init execs
+bin/hw/<name>.mt6789   -> bin/hw/mt6789/<name>.mt6789
+```
+
+`Android.mk`'s `MTK_SOC_SYMLINKS` rule builds a link's target as
+`$(TARGET_BOARD_PLATFORM)/$(notdir $@)` - which can only express the
+**second** form. And only the second form was listed. So for two binaries the
+image had the alias nobody uses and **not** the path init actually execs:
+
+| init execs | shipped? |
+|---|---|
+| `/vendor/bin/hw/android.hardware.graphics.allocator-V2-service-mediatek` | **no** - only the `.mt6789` alias |
+| `/vendor/bin/v3avpud-64b` | **no** - only the `.mt6789` alias |
+| `/vendor/bin/hw/camerahalserver` | yes (link name happens to match the rule) |
+
+The allocator one matters: `vendor.gralloc-v2` is the **AIDL gralloc
+`IAllocator`** that every graphics buffer allocation goes through -
+SurfaceFlinger, camera, codecs. It is declared in the device VINTF manifest,
+so clients wait for a service whose binary is not at the path init tries to
+exec. On a build that gets past Round 63's KeyMint stop, **this is the most
+likely next thing to stall boot**, and it would look different from the
+KeyMint hang (zygote/SurfaceFlinger up, then stuck, `adb` probably alive) -
+worth knowing before the next flash. `v3avpud-64b` is the camera 3A VPU
+daemon: camera-only, not boot-critical.
+
+**Fix** (`Android.mk`): added `MTK_SOC_SYMLINKS_SUFFIXED`, a second list with
+its own rule that appends the `.mt6789` suffix to the *target* while leaving
+the link name bare - the shape the generic rule cannot produce. Kept the
+existing `.mt6789` aliases (stock has both).
+`tools/verify-build.sh` now checks all three binary loader paths with the
+same `loadpath` helper the Mali/gralloc library paths use, so a dangling or
+absent one FAILs instead of being invisible.
+
+**One comment corrected while here**: the existing note claimed
+`lib64/hw/sensors.mt6789.so` was skipped because "those blobs aren't
+shipped". Its target (`lib64/hw/sensors.mediatek.V2.0.so`) *is* shipped. It
+is still correctly skipped, but for a different reason:
+`sensors.<platform>.so` is the legacy `libhardware`
+`hw_get_module("sensors")` name, and this tree runs the AOSP AIDL multi-HAL,
+which loads only what `hals.conf` lists
+(`android.hardware.sensors@2.X-subhal-mediatek.so`, `sensors.camera.light.so`).
+Comment rewritten so a later round doesn't "fix" a non-problem or skip a real
+one on a wrong premise.
+
+**Method note**: the first run of this symlink sweep reported only 2 hits and
+missed both binaries - it resolved absolute symlink targets by joining them
+onto the link's own directory. Same class of self-inflicted false result as
+Rounds 65/66. The numbers above are from the corrected run.
+
 ### Round 67 - both of Round 66's five FAILs re-examined: one is a one-line fix, the other was my sweep's bug
 
 Round 66's `bionic/` fix was right and necessary (bionic really does sit one
