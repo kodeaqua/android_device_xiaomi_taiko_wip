@@ -363,6 +363,69 @@ actually blocked, or nothing at all) instead of trusting `console-ramoops`
 alone - clear pstore first (`adb shell rm -f /sys/fs/pstore/*`) so a stale
 record can't be mistaken for a fresh one again.
 
+### Round 76 - the blob rc files DO auto-start HyperOS services on a normal boot: 10 of them, all droppable
+
+**Findings recorded, no tree change yet.** Round 75 answered the wrong
+question (rc *file* count). The real one: do any shipped rc files **start
+HyperOS services** on a normal boot? They do - ten of them - and none are
+needed here.
+
+Enumerated all 87 services defined across the `vendor/etc/init/*.rc` blobs
+this tree ships (that directory *is* auto-scanned by init, unlike
+`init/hw/`), then traced each Xiaomi-flavoured one to the trigger that
+actually starts it. First pass wrongly concluded they were dormant because
+they are all marked `disabled`; that only means "don't start with your
+class" - each rc then starts its own service explicitly.
+
+**Starts at `on property:sys.boot_completed=1`** (i.e. every normal boot):
+
+| service | binary | why it is useless here |
+|---|---|---|
+| `vendor.mitee.mlipay` | `mlipayd_mitee` | Mi payment - needs MIUI Wallet |
+| `vendor.mitee.soterservice` | `soterd` | SOTER payment attestation - needs MIUI |
+| `vendor.mitee.vsimservice` | `vsimd_mitee` | virtual SIM on a `ro.radio.noril=true` Wi-Fi-only tablet |
+| `vendor.mitee.mfidoca` | `fidoca_mitee` | FIDO attestation - **this device has no fingerprint sensor** (no such HAL in the manifest) |
+| `mi_ric_init`/`_run`/`_snapshot` | `MI_RIC` | Xiaomi runtime-integrity/"stability" monitoring, driven by the `persist.sys.stability.mi_ric.*` props already on the trim list |
+
+**Starts at `on post-fs-data`**: `miteelog`, `mi_ic` (`MI_IC`),
+`mimd-service2_0`.
+
+**Two things make these safe to drop:**
+1. **None are VINTF-declared.** Checked each against the shipped
+   `vendor/etc/vintf/manifest/*.xml` set: `mlipay`, `soter`, `tida`, `vsim`,
+   `mfidoca`, `mi_ric`, `mi_ic`, `mimd`, `miteelog` have **no** fragment.
+   So removing them cannot create the Round 68 failure mode (a HAL declared
+   in the manifest whose service never registers, leaving clients in
+   `waitForService()` forever). The Xiaomi services that *are* declared -
+   `vendor.mrmd`, `vendor.otrpagent`, `vendor.cld-hal-aidl`,
+   `vendor.misys.core`, `citsensorservice`, plus the hardware-relevant
+   `micharge-hal`, `touchfeature-service`, `displayfeature`,
+   `vendor.dumpstate-xiaomi` - are a different case: if any of those is ever
+   dropped, its VINTF fragment must go in the same change.
+2. **The mitee TEE stack we just repaired does not depend on them.**
+   `strings` on both `android.hardware.security.keymint@4.0-service.mitee`
+   and `android.hardware.gatekeeper-service.mitee` returns **zero** matches
+   for `mtdservice`/`mlipay`/`tida`/`soter`/`vsim`/`fidoca`/`mrm`/`misys`/
+   `otrp`/`miteelog`. Round 63's fix is self-contained; dropping the payment
+   and integrity daemons cannot break keystore.
+
+**Not dropping them now, deliberately.** Everything on the boot_completed
+list starts *after* boot completes, so none of it can be causing the current
+no-boot - removing it would buy nothing for the problem at hand while adding
+fresh variables to an unverified build. The `post-fs-data` three run in the
+same trigger as Round 63's KeyMint stop, but via `start` (asynchronous), not
+`exec_start`, so they cannot block init either.
+
+**How to drop, when the time comes** (after first boot): remove the
+`vendor/etc/init/<name>.rc` line **and** the binary line from
+`proprietary-files.txt`, which needs a full re-extract - so fold it into a
+re-extract that is happening anyway (the `libc++_shared.so` addition from
+Round 67 is already queued for one). Cheaper first test, no reflash needed:
+`adb shell stop <service>` once booted, and confirm nothing regresses.
+Lowest-priority of the set is `miteelog` - it is the mitee TEE's log drain,
+and unlike the payment daemons there is a small chance the TEE expects its
+buffer to be consumed.
+
 ### Round 75 - is the rc set bloated? No: 12 of the 22 files are never parsed on a normal boot
 
 **Question answered, no tree change.** This tree ships 22 rc files where both
