@@ -362,6 +362,57 @@ actually blocked, or nothing at all) instead of trusting `console-ramoops`
 alone - clear pstore first (`adb shell rm -f /sys/fs/pstore/*`) so a stale
 record can't be mistaken for a fresh one again.
 
+### Round 65 - correct Round 63's dependency attribution, and automate the check that would have caught it
+
+**No functional change to the image; one real correction + one new guard.**
+
+**Correction to Round 63's writeup** (the fix itself stands - Round 64
+validated the full closure against a real build). Round 63 justified four of
+its fourteen libs as needed *"via `libmt_mitee.so`"* in a sentence about the
+KeyMint HAL's dependency chain. Round 64's review correctly found that
+`libmt_mitee.so` is **not** in either HAL binary's chain - checked here too:
+neither mitee HAL `DT_NEEDED`s it, and neither carries its name as a string,
+so it is not `dlopen`ed by them either.
+
+But the review's conclusion - that three of those libs
+(`libkeymaster4support`, `libkeymint_support`,
+`libkeymint_remote_prov_support`) are therefore not in any real dependency
+chain and merely harmless - is **wrong, and dropping them on that basis would
+break something**. `libmt_mitee.so` is not unused; it is `DT_NEEDED` by
+**`vendor/bin/mtd_mitee`** (`proprietary-files.txt:989`, itself
+`;DISABLE_CHECKELF`), which is a real service with its own init rc
+(`vendor/etc/init/vendor.xiaomi.hardware.aidl.mtdservice-miteeservice.rc`).
+The true chain is `mtd_mitee` → `libmt_mitee.so` → those three. The fourth,
+`libkeymaster_messages`, is in the KeyMint chain proper anyway (via
+`libkeymint.so` and `libpuresoftkeymasterdevice.so`). So all fourteen are
+justified - Round 63 attached three of them to the wrong parent, nothing
+more.
+
+Swept the `mtd_mitee`/`libmt_mitee` closure for the same Round 63 gap while
+here: fully covered. The only non-VNDK entry left is
+`android.hardware.security.keymint-V3-ndk.so`, already handled by the
+pre-existing `replace_needed` V3→V4 `blob_fixup` on `libmt_mitee.so`; the
+rest (`libcrypto`, `libc++`, `libcutils`, `libhardware`, `libutils`,
+`libxml2`) are core VNDK, confirmed present in Round 64's real-build check.
+
+**New guard** (`tools/verify-build.sh`): Round 63's bug class, generalised
+from a one-off audit into an automatic check. For **every** blob carrying
+`;DISABLE_CHECKELF`, resolve its `DT_NEEDED` against the actual built image,
+searching the paths a vendor process really uses (`vendor/lib{,64}[/hw,/egl,
+/mt6789]`, `odm/…`, `system/lib{,64}[/vndk-sp]`, APEX lib dirs), and FAIL on
+anything unresolved. This is the check `DISABLE_CHECKELF` switches off, and
+its absence is exactly why a KeyMint HAL with ten missing libraries built
+cleanly for sixty rounds. Needs a populated `$OUT` (skips with a WARN
+otherwise).
+
+**One more thing flagged by the Round 64 review, not yet actionable**:
+`on post-fs-data` continues into ART's `odsign` (`wait_for_prop
+odsign.key.done` / `odsign.verification.done`), which is also
+keystore2/KeyMint-dependent and has never been reached because boot stopped
+earlier in the same trigger. Expected to unblock together with the KeyMint
+fix, but unproven - if the next flash gets *further* and still stalls, that
+is the first thing to check.
+
 ### Round 64 - Round 61's SPL pin doesn't build; validated Round 63 against a real built image
 
 **Two things this round: a real build-breaking bug fixed, and Round 63's fix

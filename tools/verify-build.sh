@@ -584,6 +584,47 @@ EOF
 fi
 
 # ---------------------------------------------------------------------------
+sec "DISABLE_CHECKELF blobs: unresolved NEEDED sweep (Round 65)"
+# Round 63's bug class, generalised. ;DISABLE_CHECKELF switches off the ONLY
+# thing that would notice a blob's shared-library dependency is missing, and
+# soong adds no dependency edge for such a prebuilt - so a lib that nothing
+# else happens to pull in simply never ships, and the blob dies at the dynamic
+# linker with no build-time complaint at all. That is how the mitee KeyMint
+# HAL shipped without libkeymint.so et al for 60+ rounds.
+#
+# This resolves every DISABLE_CHECKELF blob's DT_NEEDED against the real built
+# image, using the same search path the vendor linker namespace uses. Run it
+# after a full build; it needs $OUT populated.
+if ! have "$RE"; then warn "no readelf/llvm-readelf - NEEDED sweep skipped"
+elif [ ! -d "$OUT/vendor" ]; then warn "$OUT/vendor absent - NEEDED sweep skipped (build first)"
+else
+  # Where a vendor process can actually find a .so at runtime.
+  sopath(){ # $1 = soname, $2 = 32|64
+    local b=lib64; [ "$2" = 32 ] && b=lib
+    for d in "vendor/$b" "vendor/$b/hw" "vendor/$b/egl" "vendor/$b/mt6789" \
+             "vendor/$b/hw/mt6789" "odm/$b" "odm/$b/hw" "system/$b" "system/$b/vndk-sp" ; do
+      [ -e "$OUT/$d/$1" ] && return 0
+    done
+    # APEX-provided (com.android.vndk.*, com.android.runtime, ...)
+    compgen -G "$OUT/system/apex/*/$b/$1" >/dev/null 2>&1 && return 0
+    compgen -G "$OUT/apex/*/$b/$1" >/dev/null 2>&1 && return 0
+    return 1
+  }
+  nmiss=0; nblob=0
+  while IFS= read -r rel; do
+    f="$OUT/$rel"; [ -f "$f" ] || continue
+    head -c4 "$f" 2>/dev/null | grep -q ELF || continue
+    case "$rel" in */lib/*) bits=32 ;; *) bits=64 ;; esac
+    nblob=$((nblob+1))
+    while IFS= read -r so; do
+      [ -n "$so" ] || continue
+      sopath "$so" "$bits" || { fail "$rel NEEDs $so - not in the built image (DISABLE_CHECKELF hid this)"; nmiss=$((nmiss+1)); }
+    done < <("$RE" -d "$f" 2>/dev/null | awk '/NEEDED/{gsub(/[][]/,"",$5);print $5}')
+  done < <(grep ';DISABLE_CHECKELF' "$DT/proprietary-files.txt" | sed 's/;.*//;s/^-//' )
+  [ "$nmiss" -eq 0 ] && pass "$nblob DISABLE_CHECKELF blobs: every NEEDED resolves in the built image"
+fi
+
+# ---------------------------------------------------------------------------
 printf "\n${c_b}== Summary ==${c_0}\n"
 printf "  ${c_g}%d PASS${c_0}   ${c_y}%d WARN${c_0}   ${c_r}%d FAIL${c_0}\n" "$P" "$W" "$F"
 if [ "$F" -gt 0 ]; then
