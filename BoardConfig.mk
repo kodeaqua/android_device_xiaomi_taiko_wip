@@ -159,11 +159,26 @@ BOARD_KERNEL_CMDLINE += androidboot.selinux=permissive
 #     e.g. stuck on a mutex, or a syscall - a stuck first-stage mount is
 #     exactly this class) past hung_task_timeout_secs
 # Both require CONFIG_SOFTLOCKUP_DETECTOR / CONFIG_DETECT_HUNG_TASK to be
-# built into this GKI kernel to have any effect at all - both are common
-# stock GKI defconfig options, but unconfirmed for this exact build; if
-# pstore is still empty after this, that's the likely reason, not proof the
-# hang isn't kernel-level (userspace waiting on a property/service that
-# itself isn't blocked on I/O wouldn't trip either detector).
+# built into this GKI kernel to have any effect at all. Round 62: checked
+# against the real upstream Android-16 GKI defconfig (Xiaomi's own
+# arch/arm64/configs/gki_defconfig on MiCode/Xiaomi_Kernel_OpenSource
+# yili-w-oss - "w" = Android 16, same vintage as this device's
+# android16-6.12; GKI mandates one shared, vendor-unmodifiable defconfig per
+# Android version, so this is a legitimate proxy for taiko's own stock
+# kernel config even though "yili" is an unrelated device):
+# CONFIG_SOFTLOCKUP_DETECTOR=y is present - softlockup_panic should be live.
+# CONFIG_DETECT_HUNG_TASK does **not** appear at all (unlike its sibling
+# SOFTLOCKUP_DETECTOR, which the same file lists explicitly) - hung_task_panic/
+# hung_task_timeout_secs below are likely dead cmdline args on this kernel,
+# silently ignored. (Confirmed real from the same defconfig, consistent with
+# already-observed behaviour: CONFIG_PSTORE/_CONSOLE/_RAM=y - matches Round 57
+# capturing a real crash from pstore; CONFIG_PANIC_ON_OOPS=y +
+# CONFIG_PANIC_TIMEOUT=-1 - matches needing the AP watchdog, not a kernel
+# auto-reboot, to recover after that panic.) Left in place anyway -
+# softlockup_panic alone still has a real chance of catching a genuine
+# spinning-CPU hang, and an inert cmdline arg costs nothing - but don't
+# expect a D-state block (e.g. a stuck mount, or Round 61's userspace
+# keymint/vold retry loop) to ever show up in pstore via this mechanism.
 # hung_task_timeout_secs left at a relatively low 30s (default 120s) purely
 # to get a faster signal - the observed hang lasts many minutes to hours,
 # so this is nowhere near tight enough to risk a false positive from a

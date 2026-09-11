@@ -362,6 +362,73 @@ actually blocked, or nothing at all) instead of trusting `console-ramoops`
 alone - clear pstore first (`adb shell rm -f /sys/fs/pstore/*`) so a stale
 record can't be mistaken for a fresh one again.
 
+### Round 62 - confirmed Round 60's hung_task_panic is very likely dead weight, via a real Android-16 GKI defconfig
+
+**Diagnostic-only, no tree behaviour change** (kept the cmdline args - see
+below). User pointed at `MiCode/Xiaomi_Kernel_OpenSource` branch `yili-w-oss`
+(`arch/arm64/configs/gki_defconfig`) - "yili" is an unrelated Xiaomi device
+(codename doesn't resolve to anything documented, SoC unconfirmed, and
+checked separately this round - the rest of that branch is just the generic/
+common GKI kernel source with zero MediaTek content: no
+`build.config.mtk.aarch64`, no device `build.config.<name>`, `modules.bzl`
+lists only generic upstream driver modules), but the branch suffix `-w-`
+maps to **Android 16** in Xiaomi's own naming scheme (`q`=10 ... `v`=15,
+`w`=16) - the same Android/kernel vintage as this device's
+`android16-6.12`. That vintage match is what makes the file useful despite
+the device mismatch: **GKI requires one shared, vendor-unmodifiable
+defconfig per Android version** (the entire point of GKI is that OEMs don't
+get to diverge the base kernel config, only load out-of-tree vendor
+modules) - so this file is a legitimate, verifiable stand-in for what
+taiko's own stock kernel almost certainly has, resolving the exact
+uncertainty Round 60 flagged and left open ("common GKI defconfig options,
+but unconfirmed for this exact build").
+
+Downloaded and grepped the real file directly (819 lines) rather than
+trusting a summary:
+```
+CONFIG_PSTORE=y
+CONFIG_PSTORE_CONSOLE=y
+CONFIG_PSTORE_PMSG=y
+CONFIG_PSTORE_RAM=y
+...
+CONFIG_PANIC_ON_OOPS=y
+CONFIG_PANIC_TIMEOUT=-1
+CONFIG_SOFTLOCKUP_DETECTOR=y
+```
+`CONFIG_DETECT_HUNG_TASK` does not appear anywhere in the file - not `=y`,
+not `# ... is not set` - nothing, even though its sibling
+`CONFIG_SOFTLOCKUP_DETECTOR` is listed explicitly two lines above
+`CONFIG_PANIC_TIMEOUT`. Reading intent from a defconfig's *absence* of a
+symbol is inherently softer evidence than an explicit line, but the pattern
+(one debug detector spelled out, its sibling completely missing, in a file
+that isn't shy about listing other debug/hardening options like
+`CONFIG_KASAN`/`CONFIG_KFENCE` right above these) is consistent enough to
+treat Round 60's `hung_task_panic=1`/`hung_task_timeout_secs=30` as
+**likely inert** on this kernel - the boot params for a detector that isn't
+compiled in are just silently unrecognized. `softlockup_panic=1` by
+contrast is very likely genuinely live.
+
+The rest of the same snippet is a useful sanity-check on everything already
+believed about this kernel's crash behaviour: `PSTORE`/`_CONSOLE`/`_RAM=y`
+matches Round 57 actually capturing a real crash from
+`console-ramoops`; `PANIC_ON_OOPS=y` + `PANIC_TIMEOUT=-1` (no auto-reboot
+after a panic - halts until something else, e.g. the AP watchdog, resets
+it) matches every round needing to wait for the watchdog rather than seeing
+an immediate reboot after a crash. Nothing here contradicts anything on
+record.
+
+**Net effect on Round 61's leading theory**: this is actually a point in
+its favor, not against it. A userspace retry loop (e.g. vold retrying a
+keymint call that keeps cleanly failing, per Round 61) is not a D-state
+block and was never going to trip `hung_task_panic` even if it *were*
+compiled in - so Round 60 coming back empty is equally well explained by
+"the detector doesn't exist" and by "the hang is userspace, not
+kernel-level" - both point away from a true kernel deadlock and don't
+contradict Round 61 at all. Left the Round 60 cmdline args in place
+(harmless if inert, and `softlockup_panic` might still fire on an unrelated
+genuine spin) but updated their `BoardConfig.mk` comment so a future round
+doesn't re-litigate "unconfirmed" as if it's still open.
+
 ### Round 61 - static audit + external research (no device access this round): mitee KeyMint rollback protection, a VINTF theory chased and ruled out
 
 **Fix applied, not yet reflashed/confirmed** - this round was done without a
