@@ -14,22 +14,27 @@ seeded from is `lineage-23.0` — see "LineageOS 23.2 deltas" below.
 
 **State (2026-09-11):** pushed to `kodeaqua/android_device_xiaomi_taiko_wip`
 `lineage-23.2`. `brunch taiko` completes cleanly (since Round 51) — all work
-since is **real-hardware flash debugging** (Rounds 52-64, full detail in
+since is **real-hardware flash debugging** (Rounds 52-66, full detail in
 `README.md`). Recovery boots (Round 54/55, `adb` reachable); **normal system
 boot has never yet succeeded** — silent hang at the splash, no crash/pstore
 trace even with a forced `hung_task_panic`/`softlockup_panic` diagnostic
-(Round 60). **Round 63 found the root cause** (static audit, since validated
-in Round 64 against a real completed `brunch taiko` output — full `NEEDED`
-transitive closure resolved from both HAL binaries, all 23 libs present):
-the two mitee KeyMint/Gatekeeper HAL blobs carry `DISABLE_CHECKELF`, so soong
-never saw their AOSP support-lib dependencies and installed **none** of them
-into `/vendor/lib64` — the HALs die at the dynamic linker, keystore2 never
+(Round 60). **Round 63 found the root cause** (static audit, validated
+Round 64-66 against a real completed `brunch taiko` output — full `NEEDED`
+transitive closure resolved from all three mitee-related binaries, `tools/
+verify-build.sh --deep` now: 135 PASS / 13 WARN / 5 FAIL, all five confirmed
+non-boot-critical camera-AI/VoLTE gaps unrelated to this fix): the two mitee
+KeyMint/Gatekeeper HAL blobs carry `DISABLE_CHECKELF`, so soong never saw
+their AOSP support-lib dependencies and installed **none** of them into
+`/vendor/lib64` — the HALs die at the dynamic linker, keystore2 never
 reaches a KeyMint, and Android 16's `init.rc` blocks forever in
 `on post-fs-data` at `wait_for_prop keystore.module_hash.sent true` (no
 timeout → no adb, no panic, no pstore, recovery unaffected). Fixed by
-installing the 14 vendor variants explicitly in `device.mk` + a
-`libcppbor_external`→`libcppbor` `replace_needed`; `verify-build.sh` now
-FAILs if any is missing. **Round 61's `PLATFORM_SECURITY_PATCH := 2026-08-01`
+installing 14 vendor variants explicitly in `device.mk` + a
+`libcppbor_external`→`libcppbor` `replace_needed`; `verify-build.sh` now has
+a standing sweep (Round 65/66) that resolves every `;DISABLE_CHECKELF`
+blob's `NEEDED` against the real built image and FAILs on anything
+unresolved — this exact bug class (a blob whose deps nothing installs)
+cannot silently recur. **Round 61's `PLATFORM_SECURITY_PATCH := 2026-08-01`
 pin didn't build** (`version_util.mk` hard-errors — that var has been
 release-flag-locked, not device-tree-settable, since AOSP's Trunk Stable
 migration) **and was unnecessary anyway** — this device's own `bp4a` release
@@ -39,9 +44,10 @@ token already carries `2026-08-01` via `vendor/lineage`'s own
 confirmed on real hardware** — one thing flagged worth watching once it is:
 `on post-fs-data` runs ART's `odsign` (keystore2/KeyMint-dependent) right
 after the line this fix unblocks, never yet reached to confirm it doesn't
-hit its own separate issue. Camera is **enabled**. `configs/audio|media|wifi`
-are taiko's own now. `BOARD_SUPER_PARTITION_SIZE` is real (11 GiB from the
-scatter).
+hit its own separate issue. Camera is **enabled** (though its own AI-algo
+libs are missing `libc++_shared.so` — Round 66, deferred, not boot-related).
+`configs/audio|media|wifi` are taiko's own now. `BOARD_SUPER_PARTITION_SIZE`
+is real (11 GiB from the scatter).
 
 **Rule learned the hard way (Round 63):** dropping a blob because it collides
 with an AOSP source module is only *half* a fix. `vendor_available: true`

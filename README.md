@@ -362,6 +362,51 @@ actually blocked, or nothing at all) instead of trusting `console-ramoops`
 alone - clear pstore first (`adb shell rm -f /sys/fs/pstore/*`) so a stale
 record can't be mistaken for a fresh one again.
 
+### Round 66 - Round 65's own sweep had a bug (100+ false FAILs); the 5 real gaps it finds are non-boot-critical
+
+**Validated Round 65's correction and its new automated sweep against the
+real build** (a completed `brunch taiko` output already existed locally).
+The `mtd_mitee`/`libmt_mitee.so` correction checks out exactly as described
+- confirmed directly: `vendor/bin/mtd_mitee` exists, its own `readelf -d`
+lists `libmt_mitee.so` as `NEEDED`, and a full closure resolve from all
+three roots (both mitee HALs + `mtd_mitee`) reaches `libkeymaster4support`/
+`libkeymint_support`/`libkeymint_remote_prov_support` successfully. Round
+63's "via `libmt_mitee.so`" attribution really was wrong (confirmed
+independently, Round 64), but Round 64's conclusion from that ("harmless
+unused extras") was also wrong, exactly as Round 65 says - all 14 libs stay.
+
+**But running the actual `tools/verify-build.sh --deep` against real
+`$OUT`** turned up 100+ `FAIL` lines, every one `NEEDs libc.so`/`libm.so`/
+`libdl.so` - impossible to be genuinely missing (nothing on a booting
+Android device lacks bionic). Root cause: `sopath()`'s APEX glob
+(`$OUT/{system/,}apex/*/$b/$1`) doesn't account for bionic itself shipping
+one directory deeper - confirmed directly, `libc.so` actually lives at
+`out/target/product/taiko/apex/com.android.runtime/lib64/bionic/libc.so`.
+Added the `.../bionic/$1` glob variant (both `system/apex/` and `apex/`,
+both bit-widths); reran - **135 PASS, 13 WARN, 5 FAIL**, all five now
+real:
+
+- `libmialgo_sd.so` / `libmialgo_ai_vision.so` / `libmialgo_utils.so`
+  (Xiaomi's camera AI-algo libs) NEED `libc++_shared.so` - genuinely absent
+  from the OTA dump entirely, not an install-path issue (checked
+  `vendor/xiaomi/taiko/proprietary/` directly - not there, and not in
+  `proprietary-files.txt` either).
+- `volte_rcs_ua` NEEDs 64-bit `vendor.mediatek.hardware.rcs@2.0.so` /
+  `rcs-V1-ndk.so` - only the 32-bit (`vendor/lib/`) variants are in
+  `proprietary-files.txt`, the 64-bit (`vendor/lib64/`) ones were never
+  added.
+
+**Both deferred, not fixed this round** - neither is boot-critical, unlike
+Round 63's keymint gap. The MiAlgo libs are advanced camera AI-processing
+features, not core capture - camera is already flagged as needing first-boot
+verification work regardless. `volte_rcs_ua` (VoLTE) is dead weight on this
+exact device: confirmed no-modem, Wi-Fi-only (`ro.radio.noril=true` -
+hardware summary table, top of this file) - nothing will ever start this
+daemon since there's no RIL/telephony stack to invoke it, missing libs or
+not. Left as a documented, low-priority gap rather than chasing it now, with
+normal boot still unconfirmed and that the only thing that actually matters
+this round.
+
 ### Round 65 - correct Round 63's dependency attribution, and automate the check that would have caught it
 
 **No functional change to the image; one real correction + one new guard.**

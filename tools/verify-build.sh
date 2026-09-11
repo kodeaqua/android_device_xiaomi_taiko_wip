@@ -605,9 +605,15 @@ else
              "vendor/$b/hw/mt6789" "odm/$b" "odm/$b/hw" "system/$b" "system/$b/vndk-sp" ; do
       [ -e "$OUT/$d/$1" ] && return 0
     done
-    # APEX-provided (com.android.vndk.*, com.android.runtime, ...)
+    # APEX-provided (com.android.vndk.*, com.android.runtime, ...). Bionic
+    # itself (libc/libm/libdl/libdl_android) ships one directory deeper, at
+    # .../lib{,64}/bionic/ inside com.android.runtime - every DISABLE_CHECKELF
+    # blob needs at least one of these, so missing this subdir turned this
+    # sweep into 100+ false FAILs on the very first real run (Round 66).
     compgen -G "$OUT/system/apex/*/$b/$1" >/dev/null 2>&1 && return 0
+    compgen -G "$OUT/system/apex/*/$b/bionic/$1" >/dev/null 2>&1 && return 0
     compgen -G "$OUT/apex/*/$b/$1" >/dev/null 2>&1 && return 0
+    compgen -G "$OUT/apex/*/$b/bionic/$1" >/dev/null 2>&1 && return 0
     return 1
   }
   nmiss=0; nblob=0
