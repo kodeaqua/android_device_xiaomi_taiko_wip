@@ -363,6 +363,84 @@ actually blocked, or nothing at all) instead of trusting `console-ramoops`
 alone - clear pstore first (`adb shell rm -f /sys/fs/pstore/*`) so a stale
 record can't be mistaken for a fresh one again.
 
+### Round 70 - module sweep for HyperOS-only / dead weight: one suspect worth naming, nothing worth dropping yet
+
+**Analysis round, no functional change.** Question: are there further modules
+to drop - HyperOS-specific or useless? Walked all 199 `.ko` in
+`prebuilt/vendor_dlkm/` with their `.modinfo` dependency graph, reverse-dep
+map, `modules.load` membership, and every `insmod` in the rc files this build
+parses.
+
+**The one finding worth acting on eventually: `millet_*` + `binder_gki`.**
+Millet is Xiaomi's background-app-management / freezer framework.
+`binder_gki.ko` (`depends=millet_core`) registers **Android vendor hooks on
+binder itself**:
+
+```
+__tracepoint_android_vh_binder_trans
+__tracepoint_android_vh_binder_reply
+__tracepoint_android_vh_binder_wait_for_work
+__tracepoint_android_vh_binder_alloc_new_buf_locked
+__tracepoint_android_vh_binder_preset
+                              ... and calls millet_binder_switch
+```
+
+That is structurally the **same risk class as `metis`**: a closed Xiaomi
+driver hooking a core kernel subsystem and expecting HyperOS userspace to
+drive it. Where metis hooked the scheduler and NULL-dereffed, this one sits
+on every binder transaction - and `android_vh_binder_wait_for_work` is in the
+binder *wait* path, so a misbehaving handler stalls rather than crashes.
+Most likely it no-ops harmlessly when no policy daemon ever registers, which
+is the usual design, but it is worth knowing it is there.
+
+Notable: these load from `rootdir/etc/init.project.rc` (`on init`,
+7 explicit `insmod` lines), **not** `modules.load` - so unlike metis this
+needs no blocklist, no `modules.dep` blast radius and no re-extract to
+disable. The dependency graph is closed (only other `millet_*` modules and
+`binder_gki` depend on `millet_core`), so commenting out those 7 lines is a
+complete, reversible change.
+
+**Not doing it now**, same reasoning as Round 69: the device has not booted
+once, and changing more than necessary muddies attribution for Rounds 63/68.
+But this is the **first thing to try if boot gets past KeyMint and then
+stalls after zygote/`system_server`** - the binder-heavy phase - which would
+look different again from both hangs seen so far.
+
+**Do NOT drop, despite the names**: `xiaomi.ko`,
+`xiaomi_usb_touch_notifier`, `xiaomi_headset_touch_notifier`. The reverse-dep
+map shows `nt36xxx_spi` (this device's Novatek touch controller) and
+`focaltech_tp` **depend on them** - dropping means no touchscreen.
+
+**HyperOS-only but harmless** (leaf modules, nothing depends on them, no
+runtime cost beyond a few KB): `mi_unfairmem` (MIUI memory-watermark
+tuning), `mi_rmap_efficiency`, `mi_thermal_message`, `mi_thermal_notify`
+(Xiaomi thermal sysfs, unused - this tree runs
+`android.hardware.thermal-service.mediatek` from source). Not worth a
+re-extract.
+
+**Genuine dead weight in the image** (shipped, never loaded by
+`modules.load` or any rc): the `met*` family (~1.5 MB - MediaTek Extended
+Tracing, a profiling framework), `iommu_test`, and `gt9886`/`gt9896s`
+(Goodix touch - this device is Novatek + Focaltech per `modules.load`).
+About 2 MB total. Dropping costs a full re-extract and buys 2 MB of
+`vendor_dlkm`; not worth it on its own, fold it into some later re-extract
+if one happens anyway.
+
+**Two false alarms closed** (recorded so they are not re-raised):
+- `vendor/etc/modules_table.csv` lists `wlan_drv_gen4m_**6897**.ko` while
+  this device has `wlan_drv_gen4m_**6789**.ko`. Not a bug: that file is a
+  generic Xiaomi **BSP catalogue** spanning many SoCs (it also lists
+  `cmdq-platform-mt6878/6897/6985/6989`, NFC chips this device does not
+  have, `nt36532` touch it does not use). It categorises modules for
+  diagnostics; it does not load anything. Wi-Fi comes up on demand via
+  `wlan_assistant` / the Wi-Fi HAL.
+- My first "never loaded" scan flagged the Wi-Fi, BT, GPS and FM drivers as
+  dead weight. They are not: BT/GPS/FM are `insmod`ed through
+  `${ro.vendor.bt.platform}` / `${ro.vendor.gps.chrdev}` style variables the
+  grep did not expand, and Wi-Fi/BT load on demand. Dropping
+  `wlan_drv_gen4m_6789.ko` (6 MB) on a Wi-Fi-only tablet would have been the
+  worst possible "cleanup".
+
 ### Round 69 - what the metis blocklist actually costs: HW video is NOT among it (Round 58 overstated the loss)
 
 **Documentation/analysis round, no functional change.** Question raised: are
