@@ -363,6 +363,73 @@ actually blocked, or nothing at all) instead of trusting `console-ramoops`
 alone - clear pstore first (`adb shell rm -f /sys/fs/pstore/*`) so a stale
 record can't be mistaken for a fresh one again.
 
+### Round 72 - full sweep of the areas Rounds 63-71 never touched: no new boot blockers
+
+**No functional change - a coverage round.** Rounds 63-71 all orbited kernel
+modules, HAL dependencies and the init/KeyMint path. This one deliberately
+went after everything else in the tree, to close the "what else is still
+unexamined" question. Findings recorded so none of it gets re-audited.
+
+**Clean, with the evidence:**
+
+- **`modules.load` integrity** - every entry in all four load lists resolves
+  to a `.ko` that actually ships: `vendor_dlkm` 172, `system_dlkm` 82,
+  `modules.load.vendor_ramdisk` 198, `modules.load.recovery` 198. Zero
+  dangling. (`recovery` still mirroring `vendor_ramdisk` exactly is the
+  known, already-tracked TODO, not a new finding.)
+- **Duplicate init service names** - 12 exist (`wlan_assistant`,
+  `wmt_launcher`, `mnld`, `thermal_manager`, `fuelgauged`, …), but every one
+  is a collision between `factory_init.*`/`meta_init.*` and the normal-boot
+  rc, i.e. stock MTK's own per-boot-mode structure, shipped verbatim. Stock
+  parses the same duplicates. Not ours to fix.
+- **rc `import` resolution** - resolved every import (expanding
+  `${ro.vendor.rc}` → `/vendor/etc/init/hw/` and
+  `${ro.vendor.init.sensor.rc}`). Seven point at files this build does not
+  ship, of which one is a false positive:
+  `android.hardware.health-service.example.rc` comes from the **source**
+  module's own `init_rc`, not from `proprietary-files.txt`. The remaining six
+  (`init.hq.ext.rc`, the two `aee_aed*.rc`, `mobile_log_d.rc`,
+  `vendor_init_as_system.rc`, `aee_aedv64_v2.rc`) are MTK/Xiaomi extras for
+  crash-reporting and MIUI plumbing this tree deliberately does not carry. A
+  missing `import` is non-fatal in init (logged, skipped) and none of them
+  define anything on the normal-boot path.
+- **Props** - 19 properties are defined in more than one partition with
+  different values. All of them mirror stock's own per-partition values, and
+  the resolution order is unchanged from stock (later file wins:
+  system → system_ext → vendor → product), so the effective value is the
+  same one HyperOS boots with. Worth one note, though:
+  **`ro.control_privapp_permissions=enforce`** (vendor.prop, beating
+  system_ext.prop's `disable`) is the single property in this set that can
+  hard-fail a boot on its own - a privileged app with no
+  `privapp-permissions` allowlist entry throws during `SystemConfig` and
+  bootloops. It matches the AOSP default and this tree ships no Xiaomi
+  privileged apps, so it should be fine; recorded because that bootloop has a
+  very distinctive signature and is otherwise easy to misdiagnose.
+- **seccomp** - only two policies ship
+  (`android.hardware.media.c2@1.2-{extended,mediatek}-seccomp-policy`, into
+  `vendor/etc/seccomp_policy`). They are MTK's codec2 policies and do **not**
+  shadow AOSP's `mediaserver`/`mediaextractor`/`mediaswcodec` policies, which
+  is the arrangement that would cause SIGSYS crash loops. The "seccomp is
+  still MT6789-generic" note in CLAUDE.md is accurate but harmless at this
+  scope.
+- **Overlay RROs** - all five packages (`FrameworksResOverlay`,
+  `SettingsResOverlay`, `WifiResOverlay`, `LineageSDKOverlay`,
+  `PowerOffAlarmOverlay`) are in `PRODUCT_PACKAGES` with sane
+  `targetPackage`s. The boot-relevant values are right for taiko rather than
+  inherited wrong from yunluo: `config_defaultPeakRefreshRate` = 90 (matches
+  the 90 Hz panel), `config_showNavigationBar` = true and
+  `config_deviceHardwareKeys` left at the AOSP default (correct for a tablet
+  with no capacitive keys). What is still yunluo's is confined to the
+  auto-brightness nits/backlight curves and Wi-Fi country - cosmetic,
+  already tracked in the TODO list, not boot-affecting.
+
+**Conclusion: nothing new that can block a boot.** The remaining risk is
+still concentrated exactly where Rounds 63/68/70-71 left it - the KeyMint
+support-lib fix and the gralloc allocator symlink, both unverified on
+hardware, with the binder-hook module set as the named suspect if boot
+clears those and then stalls in a binder-dense phase. That the rest of the
+tree came back clean is itself worth knowing before the next flash.
+
 ### Round 71 - Round 70's hook sweep only covered `init.project.rc`; 8 more `modules.load`-loaded modules also register vendor hooks
 
 **Analysis round, no functional change - same "nothing worth dropping without
