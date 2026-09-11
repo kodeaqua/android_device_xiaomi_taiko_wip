@@ -362,6 +362,70 @@ actually blocked, or nothing at all) instead of trusting `console-ramoops`
 alone - clear pstore first (`adb shell rm -f /sys/fs/pstore/*`) so a stale
 record can't be mistaken for a fresh one again.
 
+### Round 64 - Round 61's SPL pin doesn't build; validated Round 63 against a real built image
+
+**Two things this round: a real build-breaking bug fixed, and Round 63's fix
+independently validated against actual build output** (a full `brunch taiko`
+had already completed locally - `out/target/product/taiko/` - so this
+checked real artifacts, not just source).
+
+**The build break**: `device.mk:58: error: cannot assign to readonly
+variable: PLATFORM_SECURITY_PATCH`. `build/make/core/version_util.mk`
+hard-errors on any direct `PLATFORM_SECURITY_PATCH :=` -
+`ifdef PLATFORM_SECURITY_PATCH: $(error Do not set PLATFORM_SECURITY_PATCH
+directly. Use RELEASE_PLATFORM_SECURITY_PATCH...)` - a Trunk Stable
+release-flag lock, unconditional, before device.mk is even reached. Round
+61's whole premise turned out to be wrong, not just its mechanism: checked
+the actual value LineageOS's own `bp4a` release token carries
+(`vendor/lineage/release/flag_values/bp4a/RELEASE_PLATFORM_SECURITY_PATCH.
+textproto`) - already `2026-08-01`, confirmed against a real build's own
+`system/build.prop` (`ro.build.version.security_patch=2026-08-01`) and via
+`soong_ui.bash --dumpvars-mode --vars="PLATFORM_SECURITY_PATCH"` after
+deleting the dead assignment. This tree was never missing the SPL Round 61
+wanted - `vendor/lineage` (upstream LineageOS, not this device tree) already
+provides it for this exact release token. Deleted the assignment from
+`device.mk`; `BoardConfig.mk`'s Round 61 comment and `tools/verify-build.sh`'s
+check updated/left as-is respectively (the verify-build check just asserts
+the final built value, which needed no change - it was already correct).
+Round 61's underlying *analysis* (why the SPL matters for mitee KeyMint's
+rollback protection) is still correct and still worth having documented,
+even though the fix it shipped was both unnecessary and broken.
+
+**Round 63 validation** (full transitive `NEEDED` closure resolved from both
+mitee HAL binaries against `out/target/product/taiko/vendor/`, not just
+read): all 23 libraries in the real chain resolve - the dynamic-linking fix
+is functionally confirmed, not just theoretically sound. One inaccuracy
+caught along the way: the commit message attributes 4 of the 14 added libs
+to "via `libmt_mitee.so`" - checked, and `libmt_mitee.so` is not referenced
+(NEEDED or dlopen string) by anything in the actual build at all. 3 of those
+4 (`libkeymaster4support`, `libkeymint_remote_prov_support`,
+`libkeymint_support`) aren't part of the real dependency chain either -
+harmless to keep installed, but the stated reasoning for them was wrong. The
+4th, `libkeymaster_messages`, *is* genuinely needed - just directly by
+`libkeymint.so`, not via `libmt_mitee.so`. The real chain's other
+dependencies (`libpuresoftkeymasterdevice`, `libcppcose_rkp`,
+`libsoft_attestation_cert`, `libhardware`, `libhidlbase`, `libteecli`) were
+all already present pre-Round-63 (existing blobs/packages) - no gap there.
+
+**Two things traced further, one flagged as worth watching**:
+- `rootdir/bin/init.insmod.sh` (this tree's own `vendor.all.modules.ready`
+  setter, the exact mechanism Round 58's blocklist touches) - checked the
+  real built script: plain POSIX `sh`, no `set -e`, doesn't check
+  `modprobe`'s exit status at all, so a blocklisted module failing to load
+  cannot prevent the final `setprop` from running. Round 58's fix does not
+  put this property (and everything gated on it: `chipinfo.rc`,
+  `meta_init.rc`, `factory_init.rc`, `init.mt6789.rc`) at risk.
+- **Worth watching after Round 63/64 are reflashed**: `on post-fs-data` in
+  the real `init.rc` runs `start odsign` + `wait_for_prop odsign.key.done 1`
+  right after the `keystore.module_hash.sent` line Round 63 unblocks, and
+  `on zygote-start` (fires once `post-fs-data` fully completes) waits on
+  `wait_for_prop odsign.verification.done 1` - ART's on-device-signing
+  daemon also relies on keystore2/KeyMint for its own signing key, so this
+  likely resolves automatically as a side effect of the same fix, but boot
+  has never actually reached either of these lines yet to confirm it. If the
+  next boot gets further than before but still doesn't reach `adb`, this is
+  the first place to check.
+
 ### Round 63 - ROOT CAUSE of the normal-boot hang: the mitee KeyMint/Gatekeeper HALs ship without their AOSP support libs
 
 **Fix applied, not yet reflashed/confirmed.** Full static audit of the tree

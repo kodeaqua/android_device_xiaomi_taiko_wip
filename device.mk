@@ -16,46 +16,32 @@
 LOCAL_PATH := device/xiaomi/taiko
 
 # -----------------------------------------------------------------------------
-# Security patch level (system) - MUST NOT be older than the highest SPL this
-# physical device has ever genuinely booted, or the mitee KeyMint TA's
-# per-key OS-version/patch-level rollback protection (AOSP CDD 9.10 /
-# source.android.com/docs/security/features/keystore/version-binding) starts
-# rejecting keys with KEY_REQUIRES_UPGRADE -> INVALID_ARGUMENT: any key whose
-# stored patch level is HIGHER than what the current boot reports is refused,
-# permanently, until the device reports a patch level >= that key's again.
+# Security patch level (system) - Round 61/64.
 #
-# This device shipped stock HyperOS at system SPL 2026-08-01 (dump-ota's own
-# system/build.prop, matches ../../../CLAUDE.md "Hard facts") - genuine prior
-# use of this exact unit almost certainly already latched that value into the
-# TA. LineageOS 23.2's own default PLATFORM_SECURITY_PATCH (whatever monthly
-# source drop this branch was cut from - this tree's reference
-# android_hardware_interfaces checkout is 2026-05-12, i.e. older) would be
-# LOWER than that, and would silently trip this on any keymint-mitee op
-# against a pre-existing key - most relevantly /data's own FBE key material,
-# whose blobs live in /metadata/vold/metadata_encryption (fstab.mt6789),
-# a location an ordinary recovery "wipe data" does NOT necessarily format.
-# The failure is a clean AIDL error return, not a crash - no oops, no pstore
-# trace, nothing on the console - exactly a silent, unrecoverable hang if it
-# blocks vold mounting /data during normal boot.
+# Round 61 pinned `PLATFORM_SECURITY_PATCH := 2026-08-01` directly here,
+# reasoning that this tree "never overrode it before" and would otherwise
+# inherit a too-old default, tripping mitee KeyMint's per-key rollback
+# protection (AOSP CDD 9.10) against any pre-existing key this physical
+# unit's TA already latched at stock's real system SPL - see git history for
+# the full writeup, still correct as an analysis of *why* the SPL matters.
 #
-# Root-caused via the sibling kodeaqua/android_device_xiaomi_taiko-twrp tree
-# (same stock dump, same mitee TA) hitting this exact class of bug (its own
-# README, "OS_VERSION rollback protection on encrypted /data") when reading
-# keys created by a newer-patchlevel system. That tree papered over it with
-# PLATFORM_VERSION/PLATFORM_VERSION_LAST_STABLE := 99 (it has no reliable
-# reference SPL to match); we have a real one from the dump, so pin exactly
-# that instead of an arbitrary-future guess - keeps
-# BOARD_AVB_*_ROLLBACK_INDEX (BoardConfig.mk, derived from
-# PLATFORM_SECURITY_PATCH_TIMESTAMP) truthful too, even though AVB itself is
-# currently disabled (vbmeta --disable-verification) and doesn't need this -
-# KeyMint's rollback counter is a separate mechanism the vbmeta flag does not
-# touch.
-#
-# NOT a substitute for actually wiping /metadata on the first flash from
-# stock (`fastboot erase metadata`) - do that too; this only prevents this
-# specific class of failure on every subsequent flash regardless of wipe
-# state.
-PLATFORM_SECURITY_PATCH := 2026-08-01
+# Round 64: that specific fix doesn't build - `build/make/core/version_util.mk`
+# hard-errors on a direct `PLATFORM_SECURITY_PATCH :=` ("Do not set
+# PLATFORM_SECURITY_PATCH directly. Use RELEASE_PLATFORM_SECURITY_PATCH.")
+# before this device.mk is even reached; it's been read-only since AOSP's
+# Trunk Stable release-flag migration. Checked the *actual* mechanism
+# (`vendor/lineage/release/flag_values/bp4a/RELEASE_PLATFORM_SECURITY_PATCH.
+# textproto` - `bp4a` is this device's own release token, see
+# `vendor/lineage/vars/aosp_target_release`) and its value is already
+# `2026-08-01` - confirmed in a real build's own `system/build.prop`
+# (`ro.build.version.security_patch=2026-08-01`). Round 61's stated premise
+# ("this tree never overrode it, inherits an older default") was wrong -
+# LineageOS 23.2's own bp4a release config already carries the exact value
+# Round 61 wanted, nothing to override here at all. Deleted the dead
+# assignment; `tools/verify-build.sh`'s Round 61 check (asserts
+# `ro.build.version.security_patch=2026-08-01` in the built `system/
+# build.prop`) needed no change - it already passes against the real,
+# already-correct release-flag value.
 
 # -----------------------------------------------------------------------------
 # Common product bases

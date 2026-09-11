@@ -14,23 +14,34 @@ seeded from is `lineage-23.0` — see "LineageOS 23.2 deltas" below.
 
 **State (2026-09-11):** pushed to `kodeaqua/android_device_xiaomi_taiko_wip`
 `lineage-23.2`. `brunch taiko` completes cleanly (since Round 51) — all work
-since is **real-hardware flash debugging** (Rounds 52-63, full detail in
+since is **real-hardware flash debugging** (Rounds 52-64, full detail in
 `README.md`). Recovery boots (Round 54/55, `adb` reachable); **normal system
 boot has never yet succeeded** — silent hang at the splash, no crash/pstore
 trace even with a forced `hung_task_panic`/`softlockup_panic` diagnostic
-(Round 60). **Round 63 found the root cause** (static audit): the two mitee
-KeyMint/Gatekeeper HAL blobs carry `DISABLE_CHECKELF`, so soong never saw
-their AOSP support-lib dependencies and installed **none** of them into
-`/vendor/lib64` — the HALs die at the dynamic linker, keystore2 never reaches
-a KeyMint, and Android 16's `init.rc` blocks forever in `on post-fs-data` at
-`wait_for_prop keystore.module_hash.sent true` (no timeout → no adb, no
-panic, no pstore, recovery unaffected). Fixed by installing the 14 vendor
-variants explicitly in `device.mk` + a `libcppbor_external`→`libcppbor`
-`replace_needed`; `verify-build.sh` now FAILs if any is missing. Round 61's
-`PLATFORM_SECURITY_PATCH := 2026-08-01` pin stays (same subsystem, later
-symptom). **Not yet confirmed on real hardware.** Camera is **enabled**.
-`configs/audio|media|wifi` are taiko's own now. `BOARD_SUPER_PARTITION_SIZE`
-is real (11 GiB from the scatter).
+(Round 60). **Round 63 found the root cause** (static audit, since validated
+in Round 64 against a real completed `brunch taiko` output — full `NEEDED`
+transitive closure resolved from both HAL binaries, all 23 libs present):
+the two mitee KeyMint/Gatekeeper HAL blobs carry `DISABLE_CHECKELF`, so soong
+never saw their AOSP support-lib dependencies and installed **none** of them
+into `/vendor/lib64` — the HALs die at the dynamic linker, keystore2 never
+reaches a KeyMint, and Android 16's `init.rc` blocks forever in
+`on post-fs-data` at `wait_for_prop keystore.module_hash.sent true` (no
+timeout → no adb, no panic, no pstore, recovery unaffected). Fixed by
+installing the 14 vendor variants explicitly in `device.mk` + a
+`libcppbor_external`→`libcppbor` `replace_needed`; `verify-build.sh` now
+FAILs if any is missing. **Round 61's `PLATFORM_SECURITY_PATCH := 2026-08-01`
+pin didn't build** (`version_util.mk` hard-errors — that var has been
+release-flag-locked, not device-tree-settable, since AOSP's Trunk Stable
+migration) **and was unnecessary anyway** — this device's own `bp4a` release
+token already carries `2026-08-01` via `vendor/lineage`'s own
+`RELEASE_PLATFORM_SECURITY_PATCH`, confirmed against a real build's
+`system/build.prop`; Round 64 deleted the dead assignment. **Not yet
+confirmed on real hardware** — one thing flagged worth watching once it is:
+`on post-fs-data` runs ART's `odsign` (keystore2/KeyMint-dependent) right
+after the line this fix unblocks, never yet reached to confirm it doesn't
+hit its own separate issue. Camera is **enabled**. `configs/audio|media|wifi`
+are taiko's own now. `BOARD_SUPER_PARTITION_SIZE` is real (11 GiB from the
+scatter).
 
 **Rule learned the hard way (Round 63):** dropping a blob because it collides
 with an AOSP source module is only *half* a fix. `vendor_available: true`
@@ -41,12 +52,25 @@ never ship. Whenever you drop a blob lib "because source provides it", add
 the corresponding `<module>.vendor` to `device.mk` **in the same change**,
 and prefer fixing `check_elf` over disabling it.
 
+**Rule learned the hard way (Round 64):** `PLATFORM_SECURITY_PATCH` (and its
+siblings like `TARGET_PLATFORM_VERSION`) cannot be set in a device tree at
+all anymore — `build/make/core/version_util.mk` hard-errors on direct
+assignment. The real override point for a release-flag-locked var is
+`vendor/lineage/release/flag_values/<release-token>/RELEASE_<NAME>.
+textproto` (LineageOS's own repo, not this device tree) — check what it
+*already* says before assuming a value needs pinning; it frequently already
+has the right one. Verify a static-audit fix like this against a real build
+before trusting it (`out/target/product/<device>/` if one already exists,
+`soong_ui.bash --dumpvars-mode --vars="X"` for a single var, or just
+`brunch`) — a "no device access" round's reasoning can be right about the
+problem and still wrong about the fix.
+
 ## File responsibilities
 
 | File | Owns |
 |---|---|
 | `BoardConfig.mk` | partitions, filesystem types, AVB, boot/vendor_boot layout, kernel-module wiring, SELinux/Wi-Fi board flags |
-| `device.mk` | `PRODUCT_PACKAGES` / `PRODUCT_COPY_FILES` — **blob-first**, only non-blob HALs + Lineage extras. Also owns `PLATFORM_SECURITY_PATCH` (Round 61 — must stay >= stock's real system SPL or mitee KeyMint's rollback protection rejects pre-existing keys) |
+| `device.mk` | `PRODUCT_PACKAGES` / `PRODUCT_COPY_FILES` — **blob-first**, only non-blob HALs + Lineage extras. Does **not** own `PLATFORM_SECURITY_PATCH` (Round 61 tried, Round 64 found it's release-flag-locked and unnecessary — see `vendor/lineage`'s `bp4a` release config) |
 | `lineage_taiko.mk` | product identity, `inherit-product` chain (`core_64_bit_only` + `full_base` + `common_full_tablet_wifionly`) |
 | `AndroidProducts.mk` | lunch combos |
 | `extract-files.py` / `setup-makefiles.py` | blob extractor; `blob_fixups` map is tuned against `check_elf` output |
