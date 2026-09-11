@@ -302,9 +302,10 @@ re-extract): every module that hard-depends on `metis`/`mi_schedule` per
 `modules.dep` fails to load too (cleanly - "unknown symbol", not a crash) -
 `scheduler`, `cpufreq_sugov_ext`, `mtk_core_ctl`, `task_turbo`, `vip_engine`,
 `mtk_fpsgo_v3`, `fpsgo`, `powerhal_cpu_ctrl`, `ccidvfs`, `mtk_perf_common`,
-`perf_common_v`, and **`mtk-vcodec-sys-api`** (HW video codec accel - falls
-back to SW decode, not a boot blocker). This is a real functionality loss
-(MIUI-specific perf/scheduler tuning, HW video codec) accepted for now to
+`perf_common_v`, and **`mtk-vcodec-sys-api`** (**corrected in Round 69: this
+is a 12 KB shim, NOT the codec - HW video decode/encode are unaffected**; see
+Round 69). This is a real functionality loss
+(MIUI-specific perf/scheduler tuning) accepted for now to
 get *any* successful boot; revisit once booting reliably - see "why does
 GSI boot fine then" below for why this is expected to be safe to defer.
 
@@ -361,6 +362,78 @@ touched this round) + reflash `super` + retest. Verify from recovery with
 actually blocked, or nothing at all) instead of trusting `console-ramoops`
 alone - clear pstore first (`adb shell rm -f /sys/fs/pstore/*`) so a stale
 record can't be mistaken for a fresh one again.
+
+### Round 69 - what the metis blocklist actually costs: HW video is NOT among it (Round 58 overstated the loss)
+
+**Documentation/analysis round, no functional change.** Question raised: are
+the modules lost to Round 58's `metis` blocklist worth restoring, and what is
+the workaround for `mtk-vcodec-sys-api`, since HW video matters?
+
+Read the dependency graph straight out of each `.ko`'s `.modinfo`
+(`readelf -p .modinfo`) rather than trusting the Round 58 note:
+
+```
+mtk-vcodec-common     depends=
+mtk-vcodec-dec        depends=mtk-vcodec-common,iommu_gz,system_heap,mtk_sec_heap,
+                              mtk-smi-dbg,iommu_debug,mtk_slbc,thermal_interface,mtk-icc-core
+mtk-vcodec-enc        depends=mtk-vcodec-common,iommu_gz,system_heap,mtk_sec_heap,
+                              mtk_slbc,mtk-smi,mtk-smi-dbg,iommu_debug,thermal_interface,mtk-icc-core
+mtk-vcodec-sys-api    depends=mtk-vcodec-common,vip_engine
+```
+
+Full transitive walk: **`mtk-vcodec-dec` and `mtk-vcodec-enc` never reach
+`metis`** - they load normally. Only `mtk-vcodec-sys-api` is blocked, via
+`vip_engine → task_turbo → metis`. And the sizes say what each one is:
+`mtk-vcodec-dec` 500 KB, `mtk-vcodec-enc` 477 KB, `mtk-vcodec-sys-api`
+**12 KB**. The blocked module is a shim, not a codec.
+
+**So hardware video decode and encode are not lost, and there is nothing to
+work around.** What is actually lost is the codec's hook into the VIP
+scheduler (thread-priority / latency tuning for codec work) - a smoothness
+optimisation. Round 58's "HW video codec accel - falls back to SW decode" was
+wrong; corrected there and in `modules.blocklist`.
+
+**What the blocklist really costs**, ranked:
+- `scheduler`, `cpufreq_sugov_ext`, `mtk_core_ctl` - MediaTek's scheduler /
+  cpufreq / core-control extensions. **The genuine loss**: the kernel falls
+  back to mainline schedutil instead of MTK's tuned governor, so expect
+  somewhat worse power/perf behaviour. Note yunluo (booting, same SoC) *does*
+  load these - it can, because its kernel is built from source and its copies
+  carry no metis hooks. Ours are HyperOS binaries that import metis symbols,
+  so with no kernel source they cannot be rebuilt without that edge.
+- `vip_engine`, `fpsgo`/`mtk_fpsgo_v3`, `powerhal_cpu_ctrl`, `ccidvfs`,
+  `mtk_perf_common`, `perf_common_v` - frame pacing and perf-hint plumbing.
+  Affects smoothness under load, nothing structural.
+- `metis`, `mi_schedule`, `task_turbo` - Xiaomi game-boost/scheduler. yunluo
+  never loads them at all. No reason to want them back on their own.
+
+**Worth restoring? Not now - but the retry loop gets much cheaper after first
+boot.** Re-adding a module with a confirmed NULL deref
+(`lowlt_list_del_task`, fires as `logd` starts) to a build that has not yet
+booted once would both guarantee a regression and muddy whether Rounds 63/68
+worked. After a successful boot, though, **no reflash is needed to
+experiment**: every `.ko` ships in the image regardless of `modules.load`
+(`BOARD_VENDOR_KERNEL_MODULES` wildcards the directory), so metis can be
+probed live:
+
+```
+adb shell insmod /vendor_dlkm/lib/modules/metis.ko <param>=<value>
+adb shell dmesg | tail       # crashed, or loaded?
+```
+
+Seconds per attempt instead of a flash cycle. `metis.ko` exposes ~60
+parameters; the crash is in the **low-latency list** path, so the ones worth
+trying first are `low_lt_preempt_thres`, `low_lt_preempt_thres_cold_start`,
+`force_viptask_select_rq`, `mi_viptask_balance`, `metis_schlat_enable`,
+`metis_wakeup_enable`, `mi_switch_enable` (and `bug_detect` for a louder
+failure). If one combination survives, load the dependants in
+`modules.dep` order and drop the matching `blocklist` lines here.
+
+Tempering that: this is a closed-source Xiaomi driver whose NULL deref most
+likely comes from HyperOS-only userspace never initialising its state on an
+AOSP build. A parameter may well not reach it. Treat it as a
+nice-to-have after the device boots reliably, not as something owed to this
+bring-up.
 
 ### Round 68 - fresh audit: the gralloc allocator service binary isn't at the path init execs (likely the next blocker)
 

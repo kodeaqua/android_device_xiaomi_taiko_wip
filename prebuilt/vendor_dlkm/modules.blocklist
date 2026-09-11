@@ -36,7 +36,12 @@
 # their own load too, not just skips metis): scheduler, cpufreq_sugov_ext,
 # mtk_core_ctl, task_turbo, vip_engine, mtk_fpsgo_v3, fpsgo,
 # powerhal_cpu_ctrl, ccidvfs, mtk_perf_common, perf_common_v, and
-# mtk-vcodec-sys-api (video codec HW accel - falls back to SW decode).
+# mtk-vcodec-sys-api. NOTE (Round 69): that last one does NOT cost hardware
+# video. mtk-vcodec-sys-api is a 12 KB shim whose only metis-tainted edge is
+# vip_engine; the real drivers - mtk-vcodec-dec (500 KB) and mtk-vcodec-enc
+# (477 KB) - depend on mtk-vcodec-common/iommu/heap/smi/slbc/thermal only,
+# never on metis, and load normally. HW decode and encode both work; what is
+# lost is the codec's VIP-scheduler hook (thread-priority/latency tuning).
 # Deleting the metis/mi_schedule files outright would have the identical
 # blast radius; blocklist is kept instead because it's reversible without
 # a re-extract if a newer HyperOS dump ever ships a fixed metis.ko.
